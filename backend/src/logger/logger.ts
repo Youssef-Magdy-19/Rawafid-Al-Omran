@@ -3,24 +3,26 @@ import config from '../config/index.js';
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
+// Detect if running on Vercel
+const isVercel = Boolean(process.env.VERCEL);
+
 // Custom log format
 const logFormat = printf(({ level, message, timestamp, stack, ...metadata }) => {
   let log = `${timestamp} [${level}]: ${message}`;
-  
+
   if (Object.keys(metadata).length > 0) {
     log += ` ${JSON.stringify(metadata)}`;
   }
-  
+
   if (stack) {
     log += `\n${stack}`;
   }
-  
+
   return log;
 });
 
-// Create transports array
+// Always use Console transport
 const transports: winston.transport[] = [
-  // Console transport
   new winston.transports.Console({
     format: combine(
       colorize(),
@@ -31,8 +33,8 @@ const transports: winston.transport[] = [
   }),
 ];
 
-// Add file transport in production
-if (config.env === 'production') {
+// Add file logging ONLY when NOT running on Vercel
+if (config.env === 'production' && !isVercel) {
   transports.push(
     new winston.transports.File({
       filename: 'logs/error.log',
@@ -53,15 +55,17 @@ if (config.env === 'production') {
   );
 }
 
-// Create logger instance
+// Create logger
 const logger = winston.createLogger({
   level: config.log.level,
-  defaultMeta: { service: 'rawafid-omran-api' },
+  defaultMeta: {
+    service: 'rawafid-omran-api',
+  },
   transports,
   exitOnError: false,
 });
 
-// Create a stream object for Morgan HTTP logging
+// Morgan stream
 export const logStream = {
   write: (message: string) => {
     logger.http(message.trim());
