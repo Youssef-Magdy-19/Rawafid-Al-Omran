@@ -23,7 +23,7 @@ const app = new App();
 const startServer = async () => {
   try {
     // Run startup validations (non-blocking, just logs warnings)
-   await app.connectToDatabase();
+    await app.connectToDatabase();
 
     const validationReport = await runStartupValidation();
 

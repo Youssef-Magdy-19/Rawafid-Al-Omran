@@ -47,7 +47,10 @@ class App {
       logger.info('Environment validation completed');
     } catch (error) {
       logger.error('Environment validation failed:', error);
-      process.exit(1);
+      // In production (Vercel), don't exit - just log
+      if (process.env.NODE_ENV !== 'production') {
+        process.exit(1);
+      }
     }
   }
 
@@ -112,6 +115,7 @@ class App {
     this.app.use(errorHandler);
   }
 
+  // Methods for local development server (server.ts)
   public async connectToDatabase(): Promise<void> {
     try {
       await connectDatabase();
@@ -130,7 +134,6 @@ class App {
   }
 
   public async start(): Promise<void> {
-    
     this.server = this.app.listen(config.port, () => {
       logger.info(`Server running on port ${config.port}`);
       logger.info(`Environment: ${config.env}`);
