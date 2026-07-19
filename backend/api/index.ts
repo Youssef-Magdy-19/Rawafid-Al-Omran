@@ -11,7 +11,7 @@ const connectDB = async (): Promise<void> => {
     return;
   }
 
-  // If connecting or connecting+authenticated, skip
+  // If already connecting, skip
   if (isConnected) {
     return;
   }

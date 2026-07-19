@@ -1,11 +1,12 @@
-import App from './app.js';
+import app from './app.js';
+import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { runStartupValidation } from './services/startupValidation.service.js';
 import logger from './logger/logger.js';
+import config from './config/index.js';
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason: Error | unknown, promise: Promise<unknown>) => {
   logger.error('Unhandled Rejection at:', { promise, reason });
-  // Don't exit in production - let the process handle it gracefully
   if (process.env.NODE_ENV !== 'production') {
     process.exit(1);
   }
@@ -17,14 +18,13 @@ process.on('uncaughtException', (error: Error) => {
   process.exit(1);
 });
 
-const app = new App();
-
-// Run startup validation before starting the server
+// Local development server
 const startServer = async () => {
   try {
-    // Run startup validations (non-blocking, just logs warnings)
-    await app.connectToDatabase();
+    // Connect to database
+    await connectDatabase();
 
+    // Run startup validation
     const validationReport = await runStartupValidation();
 
     if (validationReport.overall === 'not_ready') {
@@ -33,7 +33,35 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    app.listen();
+    // Start HTTP server
+    const server = app.listen(config.port, () => {
+      logger.info(`Server running on port ${config.port}`);
+      logger.info(`Environment: ${config.env}`);
+      logger.info(`API Version: ${config.apiVersion}`);
+      logger.info(`Node version: ${process.version}`);
+    });
+
+    // Graceful shutdown
+    const shutdown = async (signal: string) => {
+      logger.info(`${signal} received. Starting graceful shutdown...`);
+
+      server.close(async () => {
+        logger.info('HTTP server closed');
+        await disconnectDatabase();
+        logger.info('Graceful shutdown completed');
+        process.exit(0);
+      });
+
+      // Force shutdown after 30 seconds
+      setTimeout(() => {
+        logger.error('Forced shutdown after timeout');
+        process.exit(1);
+      }, 30000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
