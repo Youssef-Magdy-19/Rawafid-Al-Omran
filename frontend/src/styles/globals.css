@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Premium Charcoal & Gold Color System */
+    --background: 0 0% 100%;
+    --foreground: 220 14% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 14% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 14% 16%;
+    
+    /* Primary: Premium Charcoal Blue */
+    --primary: 217 91% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 217 91% 95%;
+    --primary-dark: 217 91% 35%;
+    
+    /* Secondary: Construction Gold */
+    --secondary: 43 74% 49%;
+    --secondary-foreground: 220 14% 16%;
+    --secondary-light: 43 74% 90%;
+    --secondary-dark: 43 74% 39%;
+    
+    /* Muted */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    
+    /* Accent */
+    --accent: 43 74% 49%;
+    --accent-foreground: 220 14% 16%;
+    
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & Inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 45%;
+    
+    /* Radius */
+    --radius: 0.5rem;
+    
+    /* Brand Colors */
+    --gold: 43 74% 49%;
+    --gold-light: 43 74% 90%;
+    --gold-dark: 43 74% 39%;
+    --charcoal: 220 14% 16%;
+    --charcoal-light: 220 14% 96%;
+  }
+
+  .dark {
+    --background: 220 14% 8%;
+    --foreground: 0 0% 100%;
+    --card: 220 14% 11%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 14% 11%;
+    --popover-foreground: 0 0% 100%;
+    
+    /* Primary: Premium Charcoal Blue - Dark */
+    --primary: 217 91% 60%;
+    --primary-foreground: 220 14% 8%;
+    --primary-light: 217 33% 25%;
+    --primary-dark: 217 91% 70%;
+    
+    /* Secondary: Construction Gold - Dark */
+    --secondary: 43 74% 59%;
+    --secondary-foreground: 220 14% 8%;
+    --secondary-light: 43 30% 25%;
+    --secondary-dark: 43 74% 49%;
+    
+    /* Muted - Dark */
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    
+    /* Accent - Dark */
+    --accent: 43 74% 59%;
+    --accent-foreground: 220 14% 8%;
+    
+    /* Destructive - Dark */
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & Inputs - Dark */
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 217 91% 60%;
+    
+    /* Brand Colors - Dark */
+    --gold: 43 74% 59%;
+    --gold-light: 43 30% 25%;
+    --gold-dark: 43 74% 49%;
+    --charcoal: 220 14% 96%;
+    --charcoal-light: 217 33% 17%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
