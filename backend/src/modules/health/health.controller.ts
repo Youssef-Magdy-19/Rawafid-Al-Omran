@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import config from '../../config/index.js';
 
 /**
- * Health check response interface
+ * Health response
  */
 interface HealthResponse {
   status: 'ok' | 'degraded' | 'unhealthy';
@@ -12,6 +12,10 @@ interface HealthResponse {
   service: string;
   version: string;
   environment: string;
+  database: {
+    connected: boolean;
+    state: string;
+  };
   memory: {
     used: number;
     total: number;
@@ -20,24 +24,19 @@ interface HealthResponse {
 }
 
 /**
- * Readiness check response interface
+ * Readiness response
  */
 interface ReadinessResponse {
   status: 'ready' | 'not_ready';
   timestamp: string;
   checks: {
     database: boolean;
-    memory: boolean;
     timestamp: string;
-  };
-  details: {
-    databaseState: string;
-    memoryUsage: number;
   };
 }
 
 /**
- * Liveness check response interface
+ * Liveness response
  */
 interface LivenessResponse {
   status: 'alive';
@@ -45,42 +44,46 @@ interface LivenessResponse {
   pid: number;
 }
 
-/**
- * Get memory usage statistics
- */
-const getMemoryUsage = (): { used: number; total: number; percentage: number } => {
-  const used = process.memoryUsage();
-  const total = used.heapTotal;
-  const percentage = Math.round((used.heapUsed / total) * 100);
-  
+const getMemoryUsage = () => {
+  const usage = process.memoryUsage();
+
   return {
-    used: Math.round(used.heapUsed / 1024 / 1024), // MB
-    total: Math.round(total / 1024 / 1024), // MB
-    percentage
+    used: Math.round(usage.heapUsed / 1024 / 1024),
+    total: Math.round(usage.heapTotal / 1024 / 1024),
+    percentage: Math.round((usage.heapUsed / usage.heapTotal) * 100)
   };
 };
 
-/**
- * Get database connection state description
- */
 const getDatabaseState = (): string => {
-  const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
-  return states[mongoose.connection.readyState] || 'unknown';
+  switch (mongoose.connection.readyState) {
+    case 0:
+      return 'disconnected';
+    case 1:
+      return 'connected';
+    case 2:
+      return 'connecting';
+    case 3:
+      return 'disconnecting';
+    default:
+      return 'unknown';
+  }
 };
 
 /**
  * GET /health
- * Basic health check - returns service status with memory info
  */
 export const healthCheck = (_req: Request, res: Response): void => {
   const memory = getMemoryUsage();
-  
-  // Determine status based on memory usage
-  let status: 'ok' | 'degraded' | 'unhealthy' = 'ok';
-  if (memory.percentage > 90) {
-    status = 'unhealthy';
-  } else if (memory.percentage > 75) {
+  const dbConnected = mongoose.connection.readyState === 1;
+
+  let status: 'ok' | 'degraded' | 'unhealthy';
+
+  if (dbConnected) {
+    status = 'ok';
+  } else if (mongoose.connection.readyState === 2) {
     status = 'degraded';
+  } else {
+    status = 'unhealthy';
   }
 
   const response: HealthResponse = {
@@ -90,46 +93,36 @@ export const healthCheck = (_req: Request, res: Response): void => {
     service: 'rawafid-omran-api',
     version: '1.0.0',
     environment: config.env,
+    database: {
+      connected: dbConnected,
+      state: getDatabaseState()
+    },
     memory
   };
 
-  res.json(response);
+  res.status(status === 'unhealthy' ? 503 : 200).json(response);
 };
 
 /**
  * GET /ready
- * Readiness check - returns service readiness including database connection
  */
-export const readinessCheck = async (_req: Request, res: Response): Promise<void> => {
-  const memory = getMemoryUsage();
-  const databaseConnected = mongoose.connection.readyState === 1;
-  const memoryOk = memory.percentage < 90;
-
-  const checks = {
-    database: databaseConnected,
-    memory: memoryOk,
-    timestamp: new Date().toISOString()
-  };
-
-  const isReady = checks.database && checks.memory;
-  const status = isReady ? 'ready' : 'not_ready';
+export const readinessCheck = (_req: Request, res: Response): void => {
+  const dbConnected = mongoose.connection.readyState === 1;
 
   const response: ReadinessResponse = {
-    status,
+    status: dbConnected ? 'ready' : 'not_ready',
     timestamp: new Date().toISOString(),
-    checks,
-    details: {
-      databaseState: getDatabaseState(),
-      memoryUsage: memory.percentage
+    checks: {
+      database: dbConnected,
+      timestamp: new Date().toISOString()
     }
   };
 
-  res.status(isReady ? 200 : 503).json(response);
+  res.status(dbConnected ? 200 : 503).json(response);
 };
 
 /**
  * GET /live
- * Liveness check - simple check to verify the process is running
  */
 export const livenessCheck = (_req: Request, res: Response): void => {
   const response: LivenessResponse = {
@@ -138,7 +131,7 @@ export const livenessCheck = (_req: Request, res: Response): void => {
     pid: process.pid
   };
 
-  res.json(response);
+  res.status(200).json(response);
 };
 
 export default {
