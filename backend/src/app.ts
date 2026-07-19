@@ -25,6 +25,8 @@ import testimonialRoutes from './routes/testimonial.routes.js';
 import quoteRoutes from './routes/quote.routes.js';
 import newsletterRoutes from './routes/newsletter.routes.js';
 import dashboardRoutes from './modules/dashboard/routes/dashboard.routes.js';
+import faqRoutes from './modules/faq/routes/faq.routes.js';
+import partnerRoutes from './modules/partner/routes/partner.routes.js';
 
 // Create Express application
 const app = express();
@@ -59,6 +61,8 @@ app.use(`${apiPrefix}/testimonials`, testimonialRoutes);
 app.use(`${apiPrefix}/quotes`, quoteRoutes);
 app.use(`${apiPrefix}/newsletter`, newsletterRoutes);
 app.use(`${apiPrefix}/dashboard`, dashboardRoutes);
+app.use(`${apiPrefix}/faqs`, faqRoutes);
+app.use(`${apiPrefix}/partners`, partnerRoutes);
 
 // Configure error handling
 app.use(notFoundHandler);
