@@ -1,44 +1,67 @@
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft,
-  Pencil,
-  Trash2,
-  Star,
-  Calendar,
-  Clock,
-  Building2,
-  Briefcase,
-  User,
-  MessageSquareQuote,
+  ArrowLeft, Pencil, Trash2, Star, Calendar, Clock,
+  Building2, Briefcase, User, MessageSquareQuote,
 } from 'lucide-react';
-import { mockTestimonials } from '@data/testimonialsMockData';
+import { ROUTES } from '@constants/route.constants';
+import { useTestimonial, useDeleteTestimonial } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { ErrorState } from '@components/ui/ErrorState';
 
 export function TestimonialDetails() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { data: testimonial, isLoading, isError, error, refetch } = useTestimonial(id || '');
+  const deleteTestimonial = useDeleteTestimonial();
+  const { addToast } = useToast();
 
-  const testimonial = useMemo(() => mockTestimonials.find((tst) => tst.id === id), [id]);
+  const handleDelete = () => {
+    if (!testimonial?.id) return;
+    if (!window.confirm(t('dashboard.testimonialDetails.deleteConfirm'))) return;
+    deleteTestimonial.mutate(testimonial.id, {
+      onSuccess: () => {
+        addToast(t('dashboard.testimonialDetails.deletedSuccess'), 'success');
+        navigate(ROUTES.DASHBOARD_TESTIMONIALS);
+      },
+      onError: () => addToast(t('common.error'), 'error'),
+    });
+  };
 
-  if (!testimonial) {
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star key={i} className={`h-4 w-4 ${i < rating ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/30'}`} />
+    ));
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <MessageSquareQuote className="h-12 w-12 text-muted-foreground/50 mb-4" />
-        <p className="text-lg font-medium text-foreground">Testimonial not found</p>
-        <button
-          onClick={() => navigate('/dashboard/testimonials')}
-          className="mt-4 text-sm text-primary hover:underline"
-        >
-          {t('dashboard.testimonialDetails.backToTestimonials')}
-        </button>
+      <div className="space-y-6">
+        <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-xl border border-border p-6 space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-4 bg-muted rounded animate-pulse" style={{ width: `${[70, 50, 80][i]}%` }} />
+            ))}
+            <div className="h-20 bg-muted rounded animate-pulse w-full" />
+          </div>
+          <div className="rounded-xl border border-border p-6 space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-4 bg-muted rounded animate-pulse" style={{ width: `${[60, 50, 70, 45][i]}%` }} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
-  const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: string }) => (
+  if (isError || !testimonial) {
+    return <ErrorState message={(error as Error)?.message || t('common.loadError')} onRetry={refetch} />;
+  }
+
+  const InfoRow = ({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) => (
     <div className="flex items-start gap-3">
       <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -52,127 +75,88 @@ export function TestimonialDetails() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+        className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/dashboard/testimonials')}
-            className="h-10 w-10 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+          <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-border shrink-0 bg-muted">
+            {testimonial.image && <img src={testimonial.image} alt={testimonial.name} className="h-full w-full object-cover" />}
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{t('dashboard.testimonialDetails.pageTitle')}</h1>
-            <p className="text-muted-foreground mt-1">{t('dashboard.testimonialDetails.pageDescription')}</p>
+            <button onClick={() => navigate(ROUTES.DASHBOARD_TESTIMONIALS)}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-1">
+              <ArrowLeft className="h-4 w-4" />{t('dashboard.testimonials.pageTitle')}
+            </button>
+            <h1 className="text-2xl font-bold text-foreground">{testimonial.name}</h1>
+            <p className="text-muted-foreground mt-0.5">{testimonial.position || testimonial.company || ''}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/dashboard/testimonials/${testimonial.id}/edit`)}
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            <Pencil className="h-4 w-4" />
-            {t('dashboard.testimonialDetails.editTestimonial')}
+          <button onClick={() => navigate(ROUTES.DASHBOARD_TESTIMONIALS_EDIT.replace(':id', testimonial.id))}
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
+            <Pencil className="h-4 w-4" />{t('common.edit')}
           </button>
-          <button className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-border text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
-            <Trash2 className="h-4 w-4" />
-            {t('dashboard.testimonialDetails.deleteTestimonial')}
+          <button onClick={handleDelete} disabled={deleteTestimonial.isPending}
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50">
+            <Trash2 className="h-4 w-4" />{deleteTestimonial.isPending ? t('common.deleting') : t('common.delete')}
           </button>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="lg:col-span-1"
-        >
-          <div className="rounded-xl border border-border bg-card shadow-sm p-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-border bg-muted mb-4">
-                <img
-                  src={testimonial.avatarUrl}
-                  alt={testimonial.clientName}
-                  className="h-full w-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">{testimonial.clientName}</h2>
-              <p className="text-sm text-muted-foreground">{testimonial.clientPosition}</p>
-              <div className="flex items-center gap-1 mt-2">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${i < testimonial.rating ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/30'}`}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-2 mt-4">
-                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                  testimonial.isActive
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                    : 'bg-muted text-muted-foreground border-border'
-                }`}>
-                  {testimonial.isActive ? t('dashboard.testimonialDetails.active') : t('dashboard.testimonialDetails.inactive')}
-                </span>
-                {testimonial.featured && (
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
-                    <Star className="h-3 w-3" />
-                    {t('dashboard.testimonialDetails.featured')}
-                  </span>
-                )}
-              </div>
+        <div className="lg:col-span-2 space-y-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}
+            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6">
+            <div className="flex items-center gap-2 pb-4 border-b border-border">
+              <MessageSquareQuote className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-semibold text-foreground">{t('dashboard.testimonialDetails.testimonialContent')}</h3>
             </div>
-          </div>
-        </motion.div>
+            <p className="text-sm text-foreground leading-relaxed italic">&ldquo;{testimonial.content}&rdquo;</p>
+            <div className="flex items-center gap-1">{renderStars(testimonial.rating || 0)}</div>
+          </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="lg:col-span-2 space-y-6"
-        >
-          <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">{t('dashboard.testimonialDetails.clientInformation')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InfoRow icon={User} label={t('dashboard.testimonials.clientName')} value={testimonial.clientName} />
-              <InfoRow icon={Briefcase} label={t('dashboard.testimonials.clientPosition')} value={testimonial.clientPosition} />
-              <InfoRow icon={Building2} label={t('dashboard.testimonials.companyName')} value={testimonial.companyName} />
-              <InfoRow icon={MessageSquareQuote} label={t('dashboard.testimonials.projectName')} value={testimonial.projectName || t('dashboard.testimonialDetails.noProject')} />
+        <div className="space-y-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}
+            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-border">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-semibold text-foreground">{t('dashboard.testimonialDetails.clientInfo')}</h3>
             </div>
-          </div>
+            <InfoRow icon={User} label={t('dashboard.testimonialDetails.name')} value={testimonial.name} />
+            {testimonial.position && <InfoRow icon={Briefcase} label={t('dashboard.testimonialDetails.position')} value={testimonial.position} />}
+            {testimonial.company && <InfoRow icon={Building2} label={t('dashboard.testimonialDetails.company')} value={testimonial.company} />}
+          </motion.div>
 
-          <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">{t('dashboard.testimonialDetails.testimonialContent')}</h3>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">{t('dashboard.testimonialDetails.arabicContent')}</p>
-                <div className="rounded-lg bg-muted/50 p-4 text-sm text-foreground leading-relaxed">
-                  "{testimonial.contentAr}"
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">{t('dashboard.testimonialDetails.englishContent')}</p>
-                <div className="rounded-lg bg-muted/50 p-4 text-sm text-foreground leading-relaxed">
-                  "{testimonial.contentEn}"
-                </div>
-              </div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}
+            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-border">
+              <Star className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-semibold text-foreground">{t('dashboard.testimonialDetails.metadata')}</h3>
             </div>
-          </div>
 
-          <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">{t('dashboard.testimonialDetails.metadata')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InfoRow icon={Calendar} label={t('dashboard.testimonialDetails.createdAt')} value={testimonial.createdAt} />
-              <InfoRow icon={Clock} label={t('dashboard.testimonialDetails.updatedAt')} value={testimonial.updatedAt} />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t('dashboard.testimonialDetails.rating')}</span>
+              <div className="flex items-center gap-0.5">{renderStars(testimonial.rating || 0)}</div>
             </div>
-          </div>
-        </motion.div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t('dashboard.testimonialDetails.status')}</span>
+              <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${testimonial.isActive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                {testimonial.isActive ? t('dashboard.testimonials.active_badge') : t('dashboard.testimonials.inactive_badge')}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t('dashboard.testimonialDetails.createdAt')}</span>
+              <span className="text-sm text-foreground flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-muted-foreground" />{new Date(testimonial.createdAt).toLocaleDateString()}</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t('dashboard.testimonialDetails.updatedAt')}</span>
+              <span className="text-sm text-foreground flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-muted-foreground" />{new Date(testimonial.updatedAt).toLocaleDateString()}</span>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

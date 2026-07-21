@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
@@ -6,7 +6,10 @@ import {
   Bell, BellOff, Building2, FileSpreadsheet, Mail, Users, Settings,
   FileText, MessageSquare,
 } from 'lucide-react';
-import { mockNotifications, notificationCategories } from '@data/notificationsMockData';
+import { useDashboardNotifications } from '@hooks/dashboard/useDashboard';
+import { TableSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Dropdown } from '@components/ui/Dropdown';
 
 const categoryIcons: Record<string, any> = {
   project: Building2,
@@ -28,15 +31,40 @@ const categoryColors: Record<string, string> = {
   testimonial: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
 };
 
+const notificationCategories = [
+  { key: 'all', labelEn: 'All', labelAr: 'الكل' },
+  { key: 'project', labelEn: 'Projects', labelAr: 'المشاريع' },
+  { key: 'quote', labelEn: 'Quotes', labelAr: 'طلبات السعر' },
+  { key: 'message', labelEn: 'Messages', labelAr: 'الرسائل' },
+  { key: 'team', labelEn: 'Team', labelAr: 'الفريق' },
+  { key: 'system', labelEn: 'System', labelAr: 'النظام' },
+  { key: 'blog', labelEn: 'Blog', labelAr: 'المدونة' },
+  { key: 'testimonial', labelEn: 'Testimonials', labelAr: 'آراء العملاء' },
+];
+
 export function NotificationsCenter() {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
+  const { data: apiNotifications, isLoading, error } = useDashboardNotifications();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [readFilter, setReadFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [notifications, setNotifications] = useState([...mockNotifications]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; category: string; isRead: boolean; createdAt: string }>>([]);
+
+  useEffect(() => {
+    if (apiNotifications) {
+      setNotifications(apiNotifications.map((n: any) => ({
+        id: n._id,
+        title: n.title,
+        message: n.message || '',
+        category: n.type || 'system',
+        isRead: n.isRead,
+        createdAt: n.createdAt,
+      })));
+    }
+  }, [apiNotifications]);
 
   const filtered = useMemo(() => {
     let result = [...notifications];
@@ -67,6 +95,9 @@ export function NotificationsCenter() {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
     });
   };
+
+  if (isLoading) return <div className="space-y-4"><TableSkeleton rows={5} /></div>;
+  if (error) return <ErrorState message={t('common.error')} onRetry={() => window.location.reload()} />;
 
   return (
     <div className="space-y-6">
@@ -106,18 +137,22 @@ export function NotificationsCenter() {
                 placeholder={t('dashboard.notifications.searchPlaceholder')}
                 className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
-            <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-              className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-              {notificationCategories.map((cat) => (
-                <option key={cat.key} value={cat.key}>{isRtl ? cat.labelAr : cat.labelEn}</option>
-              ))}
-            </select>
-            <select value={readFilter} onChange={(e) => { setReadFilter(e.target.value); setCurrentPage(1); }}
-              className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="all">{t('dashboard.notifications.all')}</option>
-              <option value="unread">{t('dashboard.notifications.unread')}</option>
-              <option value="read">{t('dashboard.notifications.read')}</option>
-            </select>
+            <Dropdown
+              value={categoryFilter}
+              onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
+              options={notificationCategories.map((cat) => ({ value: cat.key, label: isRtl ? cat.labelAr : cat.labelEn }))}
+              className="w-48"
+            />
+            <Dropdown
+              value={readFilter}
+              onChange={(val) => { setReadFilter(val); setCurrentPage(1); }}
+              placeholder={t('dashboard.notifications.all')}
+              options={[
+                { value: 'unread', label: t('dashboard.notifications.unread') },
+                { value: 'read', label: t('dashboard.notifications.read') },
+              ]}
+              className="w-44"
+            />
             {hasActiveFilters && (
               <button onClick={clearFilters}
                 className="inline-flex items-center gap-1 h-10 px-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors">

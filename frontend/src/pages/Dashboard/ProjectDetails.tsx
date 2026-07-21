@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,14 +16,16 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { mockProjects } from '@data/dashboardMockData';
 import { ROUTES } from '@constants/route.constants';
+import { useProject } from '@hooks/dashboard';
+import { LoadingSkeleton } from '@components/ui/LoadingSkeleton';
+import { ErrorState } from '@components/ui/ErrorState';
 
 const statusColorMap: Record<string, string> = {
   planning: 'bg-muted text-muted-foreground border-border',
-  inProgress: 'bg-primary/10 text-primary border-primary/20',
+  'in-progress': 'bg-primary/10 text-primary border-primary/20',
   completed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-  onHold: 'bg-destructive/10 text-destructive border-destructive/20',
+  'on-hold': 'bg-destructive/10 text-destructive border-destructive/20',
   cancelled: 'bg-muted text-muted-foreground border-border',
 };
 
@@ -35,14 +37,34 @@ export function ProjectDetails() {
 
   const [galleryIndex, setGalleryIndex] = useState(0);
 
-  const project = useMemo(() => {
-    return mockProjects.find((p) => p.id === id);
-  }, [id]);
+  const { data: project, isLoading, isError, refetch } = useProject(id || '');
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <LoadingSkeleton className="h-8 w-64" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <LoadingSkeleton className="h-[320px] w-full rounded-xl" />
+            <LoadingSkeleton className="h-64 w-full rounded-xl" />
+          </div>
+          <div className="space-y-6">
+            <LoadingSkeleton className="h-64 w-full rounded-xl" />
+            <LoadingSkeleton className="h-48 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   if (!project) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg font-medium text-foreground">Project not found</p>
+        <p className="text-lg font-medium text-foreground">{t('dashboard.projectDetails.notFound')}</p>
         <button
           onClick={() => navigate(ROUTES.DASHBOARD_PROJECTS)}
           className="mt-4 text-sm text-primary hover:underline"
@@ -53,11 +75,11 @@ export function ProjectDetails() {
     );
   }
 
-  const categoryKey = `dashboard.home.category${project.category.charAt(0).toUpperCase() + project.category.slice(1)}` as const;
-  const statusKey = `dashboard.home.status${project.status.charAt(0).toUpperCase() + project.status.slice(1)}` as const;
-  const statusClass = statusColorMap[project.status] || '';
+  const categoryKey = `dashboard.home.category${(project.category?.charAt(0).toUpperCase() ?? '') + (project.category?.slice(1) ?? '')}` as const;
+  const statusKey = project.status ? `dashboard.home.status${project.status === 'in-progress' ? 'InProgress' : project.status === 'on-hold' ? 'OnHold' : project.status.charAt(0).toUpperCase() + project.status.slice(1)}` as const : '';
+  const statusClass = statusColorMap[project.status] || statusColorMap.planning;
 
-  const allImages = [project.coverImage, ...project.galleryImages].filter(Boolean);
+  const allImages = [project.thumbnail, ...(project.images || [])].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -77,12 +99,12 @@ export function ProjectDetails() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              {isAr ? project.titleAr : project.titleEn}
+              {isAr ? project.titleAr : project.title}
             </h1>
             <p className="text-muted-foreground mt-1">{t('dashboard.projectDetails.pageDescription')}</p>
           </div>
           <button
-            onClick={() => navigate(`/dashboard/projects/${project.id}/edit`)}
+            onClick={() => navigate(`/dashboard/projects/${project.slug}/edit`)}
             className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/25 hover:bg-primary-dark hover:shadow-xl transition-all duration-300"
           >
             <Pencil className="h-4 w-4" />
@@ -108,7 +130,7 @@ export function ProjectDetails() {
               <div className="relative">
                 <img
                   src={allImages[galleryIndex]}
-                  alt={`${isAr ? project.titleAr : project.titleEn} - ${galleryIndex + 1}`}
+                  alt={`${isAr ? project.titleAr : project.title} - ${galleryIndex + 1}`}
                   className="w-full h-[320px] object-cover"
                 />
                 {allImages.length > 1 && (
@@ -180,25 +202,43 @@ export function ProjectDetails() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                   {t('dashboard.projectDetails.titleEn')}
                 </p>
-                <p className="text-sm text-foreground">{project.titleEn}</p>
+                <p className="text-sm text-foreground">{project.title}</p>
               </div>
-              <div>
+              <div className="lg:col-span-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                   {t('dashboard.projectDetails.descriptionAr')}
                 </p>
                 <p className="text-sm text-foreground leading-relaxed">{project.descriptionAr}</p>
               </div>
-              <div>
+              <div className="lg:col-span-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                   {t('dashboard.projectDetails.descriptionEn')}
                 </p>
-                <p className="text-sm text-foreground leading-relaxed">{project.descriptionEn}</p>
+                <p className="text-sm text-foreground leading-relaxed">{project.description}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                   {t('dashboard.projectDetails.slug')}
                 </p>
                 <p className="text-sm text-foreground font-mono">{project.slug}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                  {t('dashboard.projectDetails.location')}
+                </p>
+                <p className="text-sm text-foreground">{isAr ? project.locationAr : project.location}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                  {t('dashboard.projectDetails.client')}
+                </p>
+                <p className="text-sm text-foreground">{isAr ? project.clientAr : project.client}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                  {t('dashboard.projectDetails.year')}
+                </p>
+                <p className="text-sm text-foreground">{project.year}</p>
               </div>
             </div>
           </motion.div>
@@ -220,7 +260,7 @@ export function ProjectDetails() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('dashboard.projectDetails.category')}</span>
                 <span className="text-sm font-medium text-foreground">
-                  {t(categoryKey)}
+                  {isAr && project.categoryAr ? project.categoryAr : t(categoryKey)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -231,7 +271,7 @@ export function ProjectDetails() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('dashboard.projectDetails.featured')}</span>
-                {project.featured ? (
+                {project.isFeatured ? (
                   <Star className="h-4 w-4 text-secondary fill-secondary" />
                 ) : (
                   <StarOff className="h-4 w-4 text-muted-foreground/50" />
@@ -241,20 +281,14 @@ export function ProjectDetails() {
                 <span className="text-sm text-muted-foreground">{t('dashboard.projectDetails.createdAt')}</span>
                 <span className="text-sm text-foreground flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  {project.createdAt}
+                  {new Date(project.createdAt).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('dashboard.projectDetails.updatedAt')}</span>
                 <span className="text-sm text-foreground flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  {project.updatedAt}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t('dashboard.projectDetails.publishStatus')}</span>
-                <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  {t('dashboard.projectDetails.published')}
+                  {new Date(project.updatedAt).toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -274,32 +308,15 @@ export function ProjectDetails() {
             <div className="space-y-4">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  {t('dashboard.projectDetails.seoTitle')}
+                  {t('dashboard.projectDetails.budget')}
                 </p>
-                <p className="text-sm text-foreground">{project.seo.title || '—'}</p>
+                <p className="text-sm text-foreground">{isAr ? project.budgetAr : project.budget || '—'}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  {t('dashboard.projectDetails.seoDescription')}
+                  {t('dashboard.projectDetails.duration')}
                 </p>
-                <p className="text-sm text-foreground">{project.seo.description || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  {t('dashboard.projectDetails.seoKeywords')}
-                </p>
-                <p className="text-sm text-foreground">
-                  {project.seo.keywords.length > 0
-                    ? project.seo.keywords.map((kw) => (
-                        <span
-                          key={kw}
-                          className="inline-block mr-1.5 mb-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        >
-                          {kw}
-                        </span>
-                      ))
-                    : '—'}
-                </p>
+                <p className="text-sm text-foreground">{isAr ? project.durationAr : project.duration || '—'}</p>
               </div>
             </div>
           </motion.div>

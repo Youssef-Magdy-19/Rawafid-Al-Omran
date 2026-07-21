@@ -1,12 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Search, Filter, ChevronLeft, ChevronRight, Activity,
   Building2, FileText, FileSpreadsheet, Mail, MessageSquare,
   LogIn, Wrench, UserPlus, UserX,
 } from 'lucide-react';
-import { mockActivity } from '@data/activityMockData';
+import { useDashboardActivity } from '@hooks/dashboard/useDashboard';
+import { TableSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Dropdown } from '@components/ui/Dropdown';
 
 const activityIcons: Record<string, any> = {
   project_created: Building2,
@@ -51,22 +55,41 @@ const activityTypeLabels: Record<string, string> = {
 };
 
 export function RecentActivity() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
+  const queryClient = useQueryClient();
+  const { data: apiActivity, isLoading, error } = useDashboardActivity();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
+  const formattedActivity = useMemo(() => {
+    if (!apiActivity) return [];
+    return apiActivity.map((entry: any) => ({
+      id: entry._id,
+      type: entry.action,
+      title: entry.description || entry.action,
+      description: '',
+      user: { name: entry.user || 'System', avatar: '' },
+      timestamp: entry.createdAt,
+      relativeTime: new Date(entry.createdAt).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    }));
+  }, [apiActivity, isRtl]);
+
   const filtered = useMemo(() => {
-    let result = [...mockActivity];
+    let result = [...formattedActivity];
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter((a) => a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.user.name.toLowerCase().includes(q));
+      result = result.filter((a) => a.title.toLowerCase().includes(q) || a.user.name.toLowerCase().includes(q));
     }
     if (typeFilter !== 'all') result = result.filter((a) => a.type === typeFilter);
     result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return result;
-  }, [search, typeFilter]);
+  }, [formattedActivity, search, typeFilter]);
+
+  if (isLoading) return <div className="space-y-4"><TableSkeleton rows={5} /></div>;
+  if (error) return <ErrorState message={t('common.error')} onRetry={() => queryClient.invalidateQueries({ queryKey: ['dashboard', 'activity'] })} />;
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -100,13 +123,13 @@ export function RecentActivity() {
                 placeholder={t('dashboard.activity.searchPlaceholder')}
                 className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
-            <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="all">{t('dashboard.activity.allTypes')}</option>
-              {activityTypes.map((type) => (
-                <option key={type} value={type}>{t(`dashboard.activity.${activityTypeLabels[type]}`)}</option>
-              ))}
-            </select>
+            <Dropdown
+              value={typeFilter}
+              onChange={(val) => { setTypeFilter(val); setCurrentPage(1); }}
+              placeholder={t('dashboard.activity.allTypes')}
+              options={activityTypes.map((type) => ({ value: type, label: t(`dashboard.activity.${activityTypeLabels[type]}`) }))}
+              className="w-48"
+            />
             {hasActiveFilters && (
               <button onClick={clearFilters}
                 className="inline-flex items-center gap-1 h-10 px-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors">

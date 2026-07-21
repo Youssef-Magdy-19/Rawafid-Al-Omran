@@ -11,13 +11,14 @@ export function EditEquipment() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   const equipment = useMemo(() => mockEquipment.find((e) => e.id === id), [id]);
 
   if (!equipment) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg font-medium text-foreground">Equipment not found</p>
+        <p className="text-lg font-medium text-foreground">{t('dashboard.editEquipment.notFound')}</p>
         <button
           onClick={() => navigate(ROUTES.DASHBOARD_EQUIPMENT)}
           className="mt-4 text-sm text-primary hover:underline"
@@ -29,6 +30,7 @@ export function EditEquipment() {
   }
 
   const handleSubmit = (_data: EquipmentFormData) => {
+    setServerErrors({});
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
@@ -52,7 +54,7 @@ export function EditEquipment() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
       >
-        <EquipmentForm initialData={equipment} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+        <EquipmentForm initialData={equipment} onSubmit={handleSubmit} isSubmitting={isSubmitting} serverErrors={serverErrors} />
       </motion.div>
     </div>
   );

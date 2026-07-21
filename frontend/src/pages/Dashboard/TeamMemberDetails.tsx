@@ -1,193 +1,114 @@
-import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft,
-  Pencil,
-  Trash2,
-  Calendar,
-  Clock,
-  Globe,
-  Image as ImageIcon,
-  Hash,
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  Star,
-  StarOff,
-  Power,
-  Mail,
-  Phone,
-  MessageCircle,
-  Linkedin,
-  Facebook,
-  Instagram,
-  Briefcase,
-  Award,
-  BookOpen,
+  ArrowLeft, Pencil, Trash2, Calendar, Clock, Users, Star, StarOff,
+  Power, Mail, Phone, Briefcase,
 } from 'lucide-react';
-import { mockTeam } from '@data/teamMockData';
 import { ROUTES } from '@constants/route.constants';
+import { useTeamMember, useDeleteTeamMember } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { ErrorState } from '@components/ui/ErrorState';
 
 const departmentColorMap: Record<string, string> = {
-  management: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-  engineering: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
-  design: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-  operations: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
-  finance: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-  hr: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+  management: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  engineering: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
+  design: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  operations: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
+  finance: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  hr: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
 };
 
 export function TeamMemberDetails() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const isAr = i18n.language === 'ar';
+  const { data: member, isLoading, isError, error, refetch } = useTeamMember(id || '');
+  const deleteTeamMember = useDeleteTeamMember();
+  const { addToast } = useToast();
+  const lang = i18n.language.startsWith('ar') ? 'ar' : 'en';
 
-  const [galleryIndex, setGalleryIndex] = useState(0);
+  const handleDelete = () => {
+    if (!member?.id) return;
+    if (!window.confirm(t('dashboard.teamMemberDetails.deleteConfirm'))) return;
+    deleteTeamMember.mutate(member.id, {
+      onSuccess: () => {
+        addToast(t('dashboard.teamMemberDetails.deletedSuccess'), 'success');
+        navigate(ROUTES.DASHBOARD_TEAM);
+      },
+      onError: () => addToast(t('common.error'), 'error'),
+    });
+  };
 
-  const member = useMemo(() => mockTeam.find((m) => m.id === id), [id]);
-
-  if (!member) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg font-medium text-foreground">Team member not found</p>
-        <button
-          onClick={() => navigate(ROUTES.DASHBOARD_TEAM)}
-          className="mt-4 text-sm text-primary hover:underline"
-        >
-          {t('dashboard.team.pageTitle')}
-        </button>
+      <div className="space-y-6">
+        <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-xl border border-border p-6 space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-4 bg-muted rounded animate-pulse" style={{ width: `${[70, 50, 60, 80][i]}%` }} />
+            ))}
+          </div>
+          <div className="rounded-xl border border-border p-6 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-4 bg-muted rounded animate-pulse" style={{ width: `${[60, 50, 70, 45, 55][i]}%` }} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
-  const allImages = [member.profileImage, ...member.galleryImages].filter(Boolean);
-  const deptClass = departmentColorMap[member.department] || '';
-  const skills = member.skills.split(',').map((s) => s.trim()).filter(Boolean);
-  const certifications = member.certifications.split(',').map((c) => c.trim()).filter(Boolean);
+  if (isError || !member) {
+    return <ErrorState message={(error as Error)?.message || t('common.loadError')} onRetry={refetch} />;
+  }
+
+  const deptClass = departmentColorMap[member.department || ''] || '';
+  const bio = lang === 'ar' ? member.bioAr : member.bio;
+  const name = lang === 'ar' ? member.nameAr : member.name;
+  const position = lang === 'ar' ? member.positionAr : member.position;
+
+  const metaItem = (label: string, value: React.ReactNode) => (
+    <div className="flex items-center justify-between py-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm text-foreground">{value}</span>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <button
-          onClick={() => navigate(ROUTES.DASHBOARD_TEAM)}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t('dashboard.teamMemberDetails.backToTeam')}
-        </button>
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-border shrink-0">
-              <img
-                src={member.profileImage}
-                alt={isAr ? member.nameAr : member.nameEn}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                {isAr ? member.nameAr : member.nameEn}
-              </h1>
-              <p className="text-muted-foreground mt-1">{isAr ? member.positionAr : member.positionEn}</p>
-            </div>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+        className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-border shrink-0 bg-muted">
+            {member.image && <img src={member.image} alt={name} className="h-full w-full object-cover" />}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate(`/dashboard/team/${member.id}/edit`)}
-              className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/25 hover:bg-primary-dark hover:shadow-xl transition-all duration-300"
-            >
-              <Pencil className="h-4 w-4" />
-              {t('dashboard.teamMemberDetails.editTeam')}
+          <div>
+            <button onClick={() => navigate(ROUTES.DASHBOARD_TEAM)}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-1">
+              <ArrowLeft className="h-4 w-4" />{t('dashboard.team.pageTitle')}
             </button>
-            <button className="inline-flex items-center gap-2 h-11 px-5 rounded-xl border border-destructive/30 text-destructive font-semibold hover:bg-destructive/10 transition-all duration-300">
-              <Trash2 className="h-4 w-4" />
-              {t('dashboard.teamMemberDetails.deleteTeam')}
-            </button>
+            <h1 className="text-2xl font-bold text-foreground">{name}</h1>
+            <p className="text-muted-foreground mt-0.5">{position}</p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(ROUTES.DASHBOARD_TEAM_EDIT.replace(':id', member.id))}
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
+            <Pencil className="h-4 w-4" />{t('common.edit')}
+          </button>
+          <button onClick={handleDelete} disabled={deleteTeamMember.isPending}
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50">
+            <Trash2 className="h-4 w-4" />{deleteTeamMember.isPending ? t('common.deleting') : t('common.delete')}
+          </button>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {allImages.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="rounded-xl border border-border bg-card shadow-sm overflow-hidden"
-            >
-              <div className="p-5 border-b border-border flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.gallery')}</h3>
-              </div>
-
-              <div className="relative">
-                <img
-                  src={allImages[galleryIndex]}
-                  alt={`${isAr ? member.nameAr : member.nameEn} - ${galleryIndex + 1}`}
-                  className="w-full h-[320px] object-cover"
-                />
-                {allImages.length > 1 && (
-                  <>
-                    <button
-                      onClick={() => setGalleryIndex((i) => (i === 0 ? allImages.length - 1 : i - 1))}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => setGalleryIndex((i) => (i === allImages.length - 1 ? 0 : i + 1))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                      {allImages.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setGalleryIndex(i)}
-                          className={`h-2 w-2 rounded-full transition-all ${
-                            i === galleryIndex ? 'bg-white w-4' : 'bg-white/50 hover:bg-white/70'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {allImages.length > 1 && (
-                <div className="flex gap-2 p-3 overflow-x-auto">
-                  {allImages.map((img, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setGalleryIndex(i)}
-                      className={`shrink-0 h-16 w-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                        i === galleryIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={img} alt="" className="h-full w-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}
+            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6">
             <div className="flex items-center gap-2 pb-4 border-b border-border">
               <Users className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.profileInformation')}</h3>
@@ -200,7 +121,7 @@ export function TeamMemberDetails() {
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.nameEn')}</p>
-                <p className="text-sm text-foreground">{member.nameEn}</p>
+                <p className="text-sm text-foreground">{member.name}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.positionAr')}</p>
@@ -208,140 +129,66 @@ export function TeamMemberDetails() {
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.positionEn')}</p>
-                <p className="text-sm text-foreground">{member.positionEn}</p>
+                <p className="text-sm text-foreground">{member.position}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.department')}</p>
                 <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${deptClass}`}>
-                  {member.department}
+                  {member.department || '—'}
                 </span>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.displayOrder')}</p>
-                <p className="text-sm text-foreground">#{member.displayOrder}</p>
+                <p className="text-sm text-foreground">#{member.order ?? 0}</p>
               </div>
             </div>
           </motion.div>
 
-          {(isAr ? member.shortBioAr : member.shortBioEn) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.25 }}
-              className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4"
-            >
-              <div className="flex items-center gap-2 pb-3 border-b border-border">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.shortBioAr')}</h3>
-              </div>
-              <p className="text-sm text-foreground leading-relaxed">{isAr ? member.shortBioAr : member.shortBioEn}</p>
-            </motion.div>
-          )}
-
-          {(isAr ? member.fullBioAr : member.fullBioEn) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4"
-            >
-              <div className="flex items-center gap-2 pb-3 border-b border-border">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.biography')}</h3>
-              </div>
-              <p className="text-sm text-foreground leading-relaxed">{isAr ? member.fullBioAr : member.fullBioEn}</p>
-            </motion.div>
-          )}
-
-          {member.experience && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.35 }}
-              className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4"
-            >
+          {bio && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}
+              className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-border">
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.experience')}</h3>
+                <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.biography')}</h3>
               </div>
-              <p className="text-sm text-foreground leading-relaxed">{member.experience}</p>
+              <p className="text-sm text-foreground leading-relaxed">{bio}</p>
             </motion.div>
           )}
         </div>
 
         <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-5"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}
+            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-2">
             <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <Hash className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.metadata')}</h3>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex flex-col items-center gap-3 py-2">
-                <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-border">
-                  <img src={member.profileImage} alt="" className="h-full w-full object-cover" />
-                </div>
-                <p className="text-xs text-muted-foreground">{member.id}</p>
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-border bg-muted">
+                {member.image && <img src={member.image} alt="" className="h-full w-full object-cover" />}
               </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t('dashboard.teamMemberDetails.featured')}</span>
-                {member.featured ? (
-                  <Star className="h-4 w-4 text-secondary fill-secondary" />
-                ) : (
-                  <StarOff className="h-4 w-4 text-muted-foreground/50" />
-                )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t('dashboard.teamMemberDetails.status')}</span>
-                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                  member.active
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                    : 'bg-muted text-muted-foreground border-border'
-                }`}>
-                  {member.active ? (
-                    <><Power className="h-3 w-3 mr-1" />{t('dashboard.team.active_badge')}</>
-                  ) : (
-                    t('dashboard.team.inactive_badge')
-                  )}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t('dashboard.teamMemberDetails.yearsOfExperience')}</span>
-                <span className="text-sm font-medium text-foreground">{member.yearsOfExperience} yrs</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t('dashboard.teamMemberDetails.createdAt')}</span>
-                <span className="text-sm text-foreground flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  {member.createdAt}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t('dashboard.teamMemberDetails.updatedAt')}</span>
-                <span className="text-sm text-foreground flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  {member.updatedAt}
-                </span>
-              </div>
+              <p className="text-xs text-muted-foreground">{member.id}</p>
             </div>
+
+            {metaItem(t('dashboard.teamMemberDetails.featured'),
+              member.isFeatured ? <Star className="h-4 w-4 text-secondary fill-secondary" /> : <StarOff className="h-4 w-4 text-muted-foreground/50" />
+            )}
+            {metaItem(t('dashboard.teamMemberDetails.status'),
+              <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${member.isActive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                {member.isActive ? <><Power className="h-3 w-3 mr-1" />{t('dashboard.team.active_badge')}</> : t('dashboard.team.inactive_badge')}
+              </span>
+            )}
+            {metaItem(t('dashboard.teamMemberDetails.createdAt'),
+              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(member.createdAt).toLocaleDateString()}</span>
+            )}
+            {metaItem(t('dashboard.teamMemberDetails.updatedAt'),
+              <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{new Date(member.updatedAt).toLocaleDateString()}</span>
+            )}
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-5"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}
+            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-2 pb-3 border-b border-border">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.contactInformation')}</h3>
@@ -350,140 +197,11 @@ export function TeamMemberDetails() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground">{member.email}</span>
+                <span className="text-sm text-foreground">{member.email || '—'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground">{member.phone}</span>
-              </div>
-              {member.whatsapp && (
-                <div className="flex items-center gap-3">
-                  <MessageCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-foreground">{member.whatsapp}</span>
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.25 }}
-            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-5"
-          >
-            <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.socialLinks')}</h3>
-            </div>
-
-            <div className="space-y-3">
-              {member.linkedin ? (
-                <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors">
-                  <Linkedin className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{member.linkedin}</span>
-                </a>
-              ) : (
-                <p className="text-sm text-muted-foreground">—</p>
-              )}
-              {member.facebook ? (
-                <a href={member.facebook} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors">
-                  <Facebook className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{member.facebook}</span>
-                </a>
-              ) : null}
-              {member.instagram ? (
-                <a href={member.instagram} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors">
-                  <Instagram className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{member.instagram}</span>
-                </a>
-              ) : null}
-            </div>
-          </motion.div>
-
-          {skills.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-5"
-            >
-              <div className="flex items-center gap-2 pb-3 border-b border-border">
-                <Award className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.skills')}</h3>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <span key={skill} className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {certifications.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.35 }}
-              className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-5"
-            >
-              <div className="flex items-center gap-2 pb-3 border-b border-border">
-                <Award className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.certifications')}</h3>
-              </div>
-
-              <div className="space-y-2">
-                {certifications.map((cert) => (
-                  <div key={cert} className="flex items-center gap-2 text-sm text-foreground">
-                    <Award className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span>{cert}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
-            className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-5"
-          >
-            <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-foreground">{t('dashboard.teamMemberDetails.seoInformation')}</h3>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.seoTitleAr')}</p>
-                <p className="text-sm text-foreground">{member.seo.titleAr || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.seoTitleEn')}</p>
-                <p className="text-sm text-foreground">{member.seo.titleEn || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.seoDescriptionAr')}</p>
-                <p className="text-sm text-foreground">{member.seo.descriptionAr || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.seoDescriptionEn')}</p>
-                <p className="text-sm text-foreground">{member.seo.descriptionEn || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('dashboard.teamMemberDetails.seoKeywords')}</p>
-                <p className="text-sm text-foreground">
-                  {member.seo.keywords
-                    ? member.seo.keywords.split(',').map((kw) => (
-                        <span key={kw.trim()} className="inline-block mr-1.5 mb-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          {kw.trim()}
-                        </span>
-                      ))
-                    : '—'}
-                </p>
+                <span className="text-sm text-foreground">{member.phone || '—'}</span>
               </div>
             </div>
           </motion.div>

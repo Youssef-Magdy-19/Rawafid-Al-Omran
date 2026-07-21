@@ -1,58 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Upload,
-  X,
-  ImagePlus,
   Globe,
   Star,
 } from 'lucide-react';
-import { type DashboardProject } from '@data/dashboardMockData';
+import { ImageUpload, Dropdown, GalleryUpload } from '@components/ui';
+import type { Project } from '@services/api/types';
+import type { ApiFieldErrors } from '@utils/api';
 
 export interface ProjectFormData {
   titleAr: string;
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  shortDescriptionAr: string;
+  shortDescriptionEn: string;
   slug: string;
   category: string;
-  featured: boolean;
-  status: string;
-  coverImage: string;
-  galleryImages: string[];
-  seoTitle: string;
-  seoDescription: string;
-  seoKeywords: string;
+  categoryAr: string;
+  isFeatured: boolean;
+  location: string;
+  locationAr: string;
+  client: string;
+  clientAr: string;
+  year: number;
+  duration: string;
+  durationAr: string;
+  budget: string;
+  budgetAr: string;
+  thumbnail: string;
+  images: string[];
 }
 
 interface ProjectFormProps {
-  initialData?: DashboardProject;
-  onSubmit: (data: ProjectFormData) => void;
+  initialData?: Project;
+  onSubmit: (data: Record<string, unknown>) => void;
   isSubmitting: boolean;
+  serverErrors?: ApiFieldErrors;
 }
 
-export function ProjectForm({ initialData, onSubmit, isSubmitting }: ProjectFormProps) {
+export function ProjectForm({ initialData, onSubmit, isSubmitting, serverErrors = {} }: ProjectFormProps) {
   const { t } = useTranslation();
 
   const [form, setForm] = useState<ProjectFormData>({
     titleAr: initialData?.titleAr || '',
-    titleEn: initialData?.titleEn || '',
+    titleEn: initialData?.title || '',
     descriptionAr: initialData?.descriptionAr || '',
-    descriptionEn: initialData?.descriptionEn || '',
+    descriptionEn: initialData?.description || '',
+    shortDescriptionAr: initialData?.shortDescriptionAr || '',
+    shortDescriptionEn: initialData?.shortDescription || '',
     slug: initialData?.slug || '',
     category: initialData?.category || '',
-    featured: initialData?.featured || false,
-    status: initialData?.status || '',
-    coverImage: initialData?.coverImage || '',
-    galleryImages: initialData?.galleryImages || [],
-    seoTitle: initialData?.seo?.title || '',
-    seoDescription: initialData?.seo?.description || '',
-    seoKeywords: initialData?.seo?.keywords?.join(', ') || '',
+    categoryAr: initialData?.categoryAr || '',
+    isFeatured: initialData?.isFeatured || false,
+    location: initialData?.location || '',
+    locationAr: initialData?.locationAr || '',
+    client: initialData?.client || '',
+    clientAr: initialData?.clientAr || '',
+    year: initialData?.year || new Date().getFullYear(),
+    duration: initialData?.duration || '',
+    durationAr: initialData?.durationAr || '',
+    budget: initialData?.budget || '',
+    budgetAr: initialData?.budgetAr || '',
+    thumbnail: initialData?.thumbnail || '',
+    images: initialData?.images || [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const updateField = (field: keyof ProjectFormData, value: string | boolean | string[]) => {
+  useEffect(() => {
+    if (Object.keys(serverErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...serverErrors }));
+    }
+  }, [serverErrors]);
+
+  const updateField = (field: keyof ProjectFormData, value: string | boolean | number | string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -80,34 +102,44 @@ export function ProjectForm({ initialData, onSubmit, isSubmitting }: ProjectForm
     if (!form.descriptionEn.trim()) newErrors.descriptionEn = t('dashboard.addProject.validation.descriptionEnRequired');
     if (!form.slug.trim()) newErrors.slug = t('dashboard.addProject.validation.slugRequired');
     if (!form.category) newErrors.category = t('dashboard.addProject.validation.categoryRequired');
-    if (!form.status) newErrors.status = t('dashboard.addProject.validation.statusRequired');
+    if (!form.location.trim()) newErrors.location = t('dashboard.addProject.validation.required');
+    if (!form.client.trim()) newErrors.client = t('dashboard.addProject.validation.required');
+    if (!form.year) newErrors.year = t('dashboard.addProject.validation.required');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      onSubmit(form);
-    }
-  };
+    if (!validate()) return;
 
-  const handleCoverUpload = () => {
-    const url = prompt(t('dashboard.addProject.coverImageDescription') || 'Enter image URL:');
-    if (url) {
-      updateField('coverImage', url);
-    }
-  };
+    const payload: Record<string, unknown> = {
+      title: form.titleEn,
+      titleAr: form.titleAr,
+      slug: form.slug,
+      description: form.descriptionEn,
+      descriptionAr: form.descriptionAr,
+      shortDescription: form.shortDescriptionEn || form.descriptionEn.slice(0, 200),
+      shortDescriptionAr: form.shortDescriptionAr || form.descriptionAr.slice(0, 200),
+      category: form.category,
+      categoryAr: form.categoryAr || form.category,
+      location: form.location,
+      locationAr: form.locationAr || form.location,
+      client: form.client,
+      clientAr: form.clientAr || form.client,
+      year: form.year,
+      duration: form.duration,
+      durationAr: form.durationAr || form.duration,
+      budget: form.budget,
+      budgetAr: form.budgetAr || form.budget,
+      thumbnail: form.thumbnail,
+      images: form.images,
+      isFeatured: form.isFeatured,
+      isActive: true,
+      order: initialData?.order || 0,
+    };
 
-  const handleGalleryUpload = () => {
-    const url = prompt('Enter image URL for gallery:');
-    if (url) {
-      updateField('galleryImages', [...form.galleryImages, url]);
-    }
-  };
-
-  const removeGalleryImage = (index: number) => {
-    updateField('galleryImages', form.galleryImages.filter((_, i) => i !== index));
+    onSubmit(payload);
   };
 
   const fieldClass = (name: string) =>
@@ -205,55 +237,48 @@ export function ProjectForm({ initialData, onSubmit, isSubmitting }: ProjectForm
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                {t('dashboard.addProject.category')} <span className="text-destructive">*</span>
-              </label>
-              <select
+              <Dropdown
+                label={t('dashboard.addProject.category')}
                 value={form.category}
-                onChange={(e) => updateField('category', e.target.value)}
-                className={fieldClass('category')}
-              >
-                <option value="">{t('dashboard.addProject.categoryPlaceholder')}</option>
-                <option value="commercial">{t('dashboard.home.categoryCommercial')}</option>
-                <option value="residential">{t('dashboard.home.categoryResidential')}</option>
-                <option value="infrastructure">{t('dashboard.home.categoryInfrastructure')}</option>
-                <option value="industrial">{t('dashboard.home.categoryIndustrial')}</option>
-                <option value="educational">{t('dashboard.home.categoryEducational')}</option>
-              </select>
-              {errors.category && <p className="mt-1 text-xs text-destructive">{errors.category}</p>}
+                onChange={(val) => updateField('category', val)}
+                placeholder={t('dashboard.addProject.categoryPlaceholder')}
+                options={[
+                  { value: 'commercial', label: t('dashboard.home.categoryCommercial') },
+                  { value: 'residential', label: t('dashboard.home.categoryResidential') },
+                  { value: 'infrastructure', label: t('dashboard.home.categoryInfrastructure') },
+                  { value: 'industrial', label: t('dashboard.home.categoryIndustrial') },
+                  { value: 'educational', label: t('dashboard.home.categoryEducational') },
+                ]}
+                className="w-full"
+                error={errors.category}
+                required
+              />
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                {t('dashboard.addProject.status')} <span className="text-destructive">*</span>
+                {t('dashboard.addProject.categoryAr')}
               </label>
-              <select
-                value={form.status}
-                onChange={(e) => updateField('status', e.target.value)}
-                className={fieldClass('status')}
-              >
-                <option value="">{t('dashboard.addProject.statusPlaceholder')}</option>
-                <option value="planning">{t('dashboard.home.statusPlanning')}</option>
-                <option value="inProgress">{t('dashboard.home.statusInProgress')}</option>
-                <option value="completed">{t('dashboard.home.statusCompleted')}</option>
-                <option value="onHold">{t('dashboard.home.statusOnHold')}</option>
-                <option value="cancelled">{t('dashboard.home.statusCancelled')}</option>
-              </select>
-              {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
+              <input
+                value={form.categoryAr}
+                onChange={(e) => updateField('categoryAr', e.target.value)}
+                placeholder={t('dashboard.addProject.categoryArPlaceholder')}
+                className={fieldClass('categoryAr')}
+              />
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => updateField('featured', !form.featured)}
+              onClick={() => updateField('isFeatured', !form.isFeatured)}
               className={`flex items-center gap-2 h-11 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                form.featured
+                form.isFeatured
                   ? 'border-secondary bg-secondary/10 text-secondary'
                   : 'border-border text-muted-foreground hover:bg-muted'
               }`}
             >
-              <Star className={`h-4 w-4 ${form.featured ? 'fill-secondary' : ''}`} />
+              <Star className={`h-4 w-4 ${form.isFeatured ? 'fill-secondary' : ''}`} />
               {t('dashboard.addProject.featured')}
             </button>
             <span className="text-xs text-muted-foreground">
@@ -264,111 +289,117 @@ export function ProjectForm({ initialData, onSubmit, isSubmitting }: ProjectForm
       </div>
 
       <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6">
+        <h3 className="text-lg font-semibold text-foreground">{t('dashboard.addProject.projectDetails')}</h3>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              {t('dashboard.addProject.location')} <span className="text-destructive">*</span>
+            </label>
+            <input
+              value={form.location}
+              onChange={(e) => updateField('location', e.target.value)}
+              placeholder={t('dashboard.addProject.locationPlaceholder')}
+              className={fieldClass('location')}
+            />
+            {errors.location && <p className="mt-1 text-xs text-destructive">{errors.location}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              {t('dashboard.addProject.locationAr')}
+            </label>
+            <input
+              value={form.locationAr}
+              onChange={(e) => updateField('locationAr', e.target.value)}
+              placeholder={t('dashboard.addProject.locationArPlaceholder')}
+              className={fieldClass('locationAr')}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              {t('dashboard.addProject.client')} <span className="text-destructive">*</span>
+            </label>
+            <input
+              value={form.client}
+              onChange={(e) => updateField('client', e.target.value)}
+              placeholder={t('dashboard.addProject.clientPlaceholder')}
+              className={fieldClass('client')}
+            />
+            {errors.client && <p className="mt-1 text-xs text-destructive">{errors.client}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              {t('dashboard.addProject.clientAr')}
+            </label>
+            <input
+              value={form.clientAr}
+              onChange={(e) => updateField('clientAr', e.target.value)}
+              placeholder={t('dashboard.addProject.clientArPlaceholder')}
+              className={fieldClass('clientAr')}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              {t('dashboard.addProject.year')} <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="number"
+              value={form.year}
+              onChange={(e) => updateField('year', parseInt(e.target.value) || new Date().getFullYear())}
+              className={fieldClass('year')}
+            />
+            {errors.year && <p className="mt-1 text-xs text-destructive">{errors.year}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              {t('dashboard.addProject.duration')}
+            </label>
+            <input
+              value={form.duration}
+              onChange={(e) => updateField('duration', e.target.value)}
+              placeholder={t('dashboard.addProject.durationPlaceholder')}
+              className={fieldClass('duration')}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              {t('dashboard.addProject.budget')}
+            </label>
+            <input
+              value={form.budget}
+              onChange={(e) => updateField('budget', e.target.value)}
+              placeholder={t('dashboard.addProject.budgetPlaceholder')}
+              className={fieldClass('budget')}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6">
         <h3 className="text-lg font-semibold text-foreground">{t('dashboard.addProject.coverImage')}</h3>
         <p className="text-xs text-muted-foreground -mt-4">{t('dashboard.addProject.coverImageDescription')}</p>
 
-        <div className="flex items-center gap-4">
-          {form.coverImage ? (
-            <div className="relative group">
-              <img
-                src={form.coverImage}
-                alt="Cover"
-                className="h-32 w-48 rounded-lg object-cover border border-border"
-              />
-              <button
-                type="button"
-                onClick={() => updateField('coverImage', '')}
-                className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleCoverUpload}
-              className="flex flex-col items-center justify-center h-32 w-48 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-            >
-              <Upload className="h-6 w-6 mb-1" />
-              <span className="text-xs font-medium">{t('dashboard.addProject.uploadImage')}</span>
-            </button>
-          )}
-        </div>
+        <ImageUpload
+          value={form.thumbnail}
+          onChange={(url) => updateField('thumbnail', url)}
+          label={t('dashboard.addProject.coverImage')}
+        />
       </div>
 
       <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6">
         <h3 className="text-lg font-semibold text-foreground">{t('dashboard.addProject.galleryImages')}</h3>
         <p className="text-xs text-muted-foreground -mt-4">{t('dashboard.addProject.galleryImagesDescription')}</p>
 
-        <div className="flex flex-wrap gap-3">
-          {form.galleryImages.map((img, i) => (
-            <div key={i} className="relative group">
-              <img
-                src={img}
-                alt={`Gallery ${i + 1}`}
-                className="h-24 w-24 rounded-lg object-cover border border-border"
-              />
-              <button
-                type="button"
-                onClick={() => removeGalleryImage(i)}
-                className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={handleGalleryUpload}
-            className="flex flex-col items-center justify-center h-24 w-24 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-          >
-            <ImagePlus className="h-5 w-5 mb-1" />
-            <span className="text-[10px] font-medium">{t('dashboard.addProject.addImages')}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6">
-        <h3 className="text-lg font-semibold text-foreground">{t('dashboard.addProject.seoSection')}</h3>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              {t('dashboard.addProject.seoTitle')}
-            </label>
-            <input
-              value={form.seoTitle}
-              onChange={(e) => updateField('seoTitle', e.target.value)}
-              placeholder={t('dashboard.addProject.seoTitlePlaceholder')}
-              className={fieldClass('seoTitle')}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              {t('dashboard.addProject.seoDescription')}
-            </label>
-            <textarea
-              value={form.seoDescription}
-              onChange={(e) => updateField('seoDescription', e.target.value)}
-              placeholder={t('dashboard.addProject.seoDescriptionPlaceholder')}
-              className={textareaClass('seoDescription')}
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              {t('dashboard.addProject.seoKeywords')}
-            </label>
-            <input
-              value={form.seoKeywords}
-              onChange={(e) => updateField('seoKeywords', e.target.value)}
-              placeholder={t('dashboard.addProject.seoKeywordsPlaceholder')}
-              className={fieldClass('seoKeywords')}
-            />
-          </div>
-        </div>
+        <GalleryUpload
+          value={form.images}
+          onChange={(urls) => updateField('images', urls)}
+        />
       </div>
 
       <div className="flex items-center justify-end gap-3">

@@ -5,7 +5,6 @@ import {
   Building2,
   HardHat,
   CheckCircle2,
-  PauseCircle,
   Plus,
   Eye,
   FileBarChart,
@@ -14,36 +13,36 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
-import { dashboardStats, recentProjects, type DashboardProject } from '@data/dashboardMockData';
+import { useAuthStore } from '@store/authStore';
+import { useDashboardStats } from '@hooks/dashboard';
+import type { RecentProject } from '@services/api/types';
+import { CardSkeleton } from '@components/ui/LoadingSkeleton';
+import { ErrorState } from '@components/ui/ErrorState';
 
-const statCards = [
+const overviewCards = [
   {
     key: 'totalProjects',
-    value: dashboardStats.totalProjects + dashboardStats.completedProjects,
     icon: Building2,
     color: 'from-primary/20 to-primary/5',
     iconColor: 'text-primary',
   },
   {
-    key: 'ongoingProjects',
-    value: dashboardStats.ongoingProjects,
+    key: 'totalServices',
     icon: HardHat,
     color: 'from-secondary/20 to-secondary/5',
     iconColor: 'text-secondary',
   },
   {
-    key: 'completedProjects',
-    value: dashboardStats.completedProjects,
+    key: 'totalTeamMembers',
+    icon: Users,
+    color: 'from-violet-500/20 to-violet-500/5',
+    iconColor: 'text-violet-500',
+  },
+  {
+    key: 'totalTestimonials',
     icon: CheckCircle2,
     color: 'from-emerald-500/20 to-emerald-500/5',
     iconColor: 'text-emerald-500',
-  },
-  {
-    key: 'onHoldProjects',
-    value: dashboardStats.onHoldProjects,
-    icon: PauseCircle,
-    color: 'from-destructive/20 to-destructive/5',
-    iconColor: 'text-destructive',
   },
 ];
 
@@ -54,14 +53,6 @@ const quickActions = [
   { key: 'manageTeam', icon: Users, color: 'bg-violet-500 text-white', path: ROUTES.DASHBOARD_TEAM },
 ];
 
-const statusConfig: Record<string, { labelKey: string; color: string }> = {
-  planning: { labelKey: 'dashboard.home.statusPlanning', color: 'bg-muted text-muted-foreground border-border' },
-  inProgress: { labelKey: 'dashboard.home.statusInProgress', color: 'bg-primary/10 text-primary border-primary/20' },
-  completed: { labelKey: 'dashboard.home.statusCompleted', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-  onHold: { labelKey: 'dashboard.home.statusOnHold', color: 'bg-destructive/10 text-destructive border-destructive/20' },
-  cancelled: { labelKey: 'dashboard.home.statusCancelled', color: 'bg-muted text-muted-foreground border-border' },
-};
-
 const categoryConfig: Record<string, { labelKey: string }> = {
   commercial: { labelKey: 'dashboard.home.categoryCommercial' },
   residential: { labelKey: 'dashboard.home.categoryResidential' },
@@ -71,9 +62,32 @@ const categoryConfig: Record<string, { labelKey: string }> = {
 };
 
 export function DashboardHome() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const isAr = i18n.language === 'ar';
+  const user = useAuthStore((state) => state.user);
+
+  const { data: stats, isLoading, isError, refetch } = useDashboardStats();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <CardSkeleton count={4} />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
+
+  const statValues = stats
+    ? overviewCards.map((card) => ({
+        key: card.key,
+        value: stats.overview[card.key as keyof typeof stats.overview] ?? 0,
+      }))
+    : [];
+
+  const recentProjects = stats?.recentProjects || [];
 
   return (
     <div className="space-y-6">
@@ -83,32 +97,35 @@ export function DashboardHome() {
         transition={{ duration: 0.4 }}
       >
         <h1 className="text-2xl font-bold text-foreground">
-          {t('dashboard.home.welcome')}, Ahmed
+          {t('dashboard.home.welcome')}, {user?.firstName || 'User'}
         </h1>
         <p className="text-muted-foreground mt-1">{t('dashboard.home.welcomeMessage')}</p>
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat, index) => (
-          <motion.div
-            key={stat.key}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.1 }}
-            className="relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all duration-300"
-          >
-            <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full bg-gradient-to-bl ${stat.color} opacity-60`} />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.color} ${stat.iconColor}`}>
-                  <stat.icon className="h-5 w-5" />
+        {overviewCards.map((card, index) => {
+          const statVal = statValues.find((s) => s.key === card.key);
+          return (
+            <motion.div
+              key={card.key}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
+              className="relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full bg-gradient-to-bl ${card.color} opacity-60`} />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.color} ${card.iconColor}`}>
+                    <card.icon className="h-5 w-5" />
+                  </div>
                 </div>
+                <p className="text-2xl font-bold text-foreground">{statVal?.value ?? 0}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t(`dashboard.home.${card.key}`)}</p>
               </div>
-              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-sm text-muted-foreground mt-1">{t(`dashboard.home.${stat.key}`)}</p>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
 
       <motion.div
@@ -175,48 +192,51 @@ export function DashboardHome() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {recentProjects.map((project: DashboardProject) => {
-                const status = statusConfig[project.status];
-                const category = categoryConfig[project.category];
-                return (
-                  <tr
-                    key={project.id}
-                    className="hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/dashboard/projects/${project.id}`)}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0">
-                          <img
-                            src={project.coverImage}
-                            alt={isAr ? project.titleAr : project.titleEn}
-                            className="h-full w-full object-cover"
-                          />
+              {recentProjects.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                    {t('common.noData')}
+                  </td>
+                </tr>
+              ) : (
+                recentProjects.map((project: RecentProject) => {
+                  const category = categoryConfig[project.category] || { labelKey: '' };
+                  return (
+                    <tr
+                      key={project._id}
+                      className="hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/dashboard/projects/${project.slug}`)}
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center text-muted-foreground">
+                            <Building2 className="h-5 w-5" />
+                          </div>
+                          <span className="text-sm font-medium text-foreground">
+                            {project.title}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-foreground">
-                          {isAr ? project.titleAr : project.titleEn}
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground">
+                        {category.labelKey ? t(category.labelKey) : project.category}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium text-muted-foreground border-border">
+                          {project.isFeatured ? t('common.featured') : t('common.active')}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">
-                      {t(category.labelKey)}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
-                        {t(status.labelKey)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">
-                      {project.createdAt}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <button className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground">
+                        {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : ''}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <button className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

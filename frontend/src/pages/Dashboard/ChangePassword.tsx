@@ -46,6 +46,8 @@ export function ChangePassword() {
 
   const isValid = currentPassword.length > 0 && newPassword.length >= 8 && passwordsMatch;
 
+  // TODO: No API call — placeholder logic only.
+  // Replace with actual POST /auth/change-password call using apiClient.
   const handleSubmit = () => {
     if (!isValid) return;
     setSubmitted(true);

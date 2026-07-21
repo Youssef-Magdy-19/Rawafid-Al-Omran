@@ -14,27 +14,34 @@ import {
   ChevronRight,
   Star,
   StarOff,
-  CheckCheck,
   X,
   ArrowUpDown,
+  Loader2,
 } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
-import { mockProjects } from '@data/dashboardMockData';
+import { useProjects, useDeleteProject } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { LoadingSkeleton } from '@components/ui/LoadingSkeleton';
+import { ErrorState } from '@components/ui/ErrorState';
+import { Dropdown } from '@components/ui/Dropdown';
 
 const statusColorMap: Record<string, string> = {
   planning: 'bg-muted text-muted-foreground border-border',
+  'in-progress': 'bg-primary/10 text-primary border-primary/20',
   inProgress: 'bg-primary/10 text-primary border-primary/20',
   completed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  'on-hold': 'bg-destructive/10 text-destructive border-destructive/20',
   onHold: 'bg-destructive/10 text-destructive border-destructive/20',
   cancelled: 'bg-muted text-muted-foreground border-border',
 };
 
-type SortField = 'titleEn' | 'createdAt' | 'status';
+type SortField = 'title' | 'createdAt' | 'status';
 type SortOrder = 'asc' | 'desc';
 
 export function ProjectsList() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const isAr = i18n.language === 'ar';
 
   const [search, setSearch] = useState('');
@@ -48,94 +55,76 @@ export function ProjectsList() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
+  const queryParams = useMemo(() => {
+    const params: Record<string, string> = {
+      page: String(currentPage),
+      limit: String(itemsPerPage),
+    };
+    if (search) params.search = search;
+    if (statusFilter !== 'all') params.status = statusFilter;
+    if (categoryFilter !== 'all') params.category = categoryFilter;
+    if (featuredFilter === 'featured') params.isFeatured = 'true';
+    else if (featuredFilter === 'nonFeatured') params.isFeatured = 'false';
+    if (sortField) params.sortBy = sortField;
+    if (sortOrder) params.sortOrder = sortOrder;
+    return params;
+  }, [search, statusFilter, categoryFilter, featuredFilter, sortField, sortOrder, currentPage, itemsPerPage]);
+
+  const { data, isLoading, isError, refetch } = useProjects(queryParams);
+  const deleteProject = useDeleteProject();
+
+  const projects = data?.projects || [];
+  const pagination = data?.pagination;
+
   const filteredProjects = useMemo(() => {
-    let result = [...mockProjects];
-
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.titleAr.includes(q) ||
-          p.titleEn.toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q)
-      );
+    let result = [...projects];
+    if (sortField === 'title') {
+      result.sort((a, b) => {
+        const cmp = (isAr ? a.titleAr : a.title).localeCompare(isAr ? b.titleAr : b.title);
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
+    } else if (sortField === 'status') {
+      result.sort((a, b) => {
+        const cmp = a.status.localeCompare(b.status);
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
     }
-
-    if (statusFilter !== 'all') {
-      result = result.filter((p) => p.status === statusFilter);
-    }
-
-    if (categoryFilter !== 'all') {
-      result = result.filter((p) => p.category === categoryFilter);
-    }
-
-    if (featuredFilter === 'featured') {
-      result = result.filter((p) => p.featured);
-    } else if (featuredFilter === 'nonFeatured') {
-      result = result.filter((p) => !p.featured);
-    }
-
-    result.sort((a, b) => {
-      let cmp = 0;
-      if (sortField === 'titleEn') {
-        cmp = a.titleEn.localeCompare(b.titleEn);
-      } else if (sortField === 'createdAt') {
-        cmp = a.createdAt.localeCompare(b.createdAt);
-      } else if (sortField === 'status') {
-        cmp = a.status.localeCompare(b.status);
-      }
-      return sortOrder === 'asc' ? cmp : -cmp;
-    });
-
     return result;
-  }, [search, statusFilter, categoryFilter, featuredFilter, sortField, sortOrder]);
+  }, [projects, sortField, sortOrder, isAr]);
 
-  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
-  const paginatedProjects = filteredProjects.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = pagination?.totalPages || 0;
 
-  const allSelected = paginatedProjects.length > 0 && paginatedProjects.every((p) => selectedIds.has(p.id));
+  const allSelected = filteredProjects.length > 0 && filteredProjects.every((p) => selectedIds.has(p.id));
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
   const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(paginatedProjects.map((p) => p.id)));
-    }
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredProjects.map((p) => p.id)));
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    deleteProject.mutate(id, {
+      onSuccess: () => {
+        addToast(t('dashboard.projects.deletedSuccess'), 'success');
+        setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      },
+      onError: () => addToast(t('common.error'), 'error'),
+    });
   };
 
   const handleBulkDelete = () => {
-    // Temporary UI - no backend
+    selectedIds.forEach((id) => deleteProject.mutate(id));
+    addToast(t('dashboard.projects.bulkDeleted'), 'success');
     setSelectedIds(new Set());
-  };
-
-  const handleBulkFeatured = () => {
-    // Temporary UI - no backend
-    setSelectedIds(new Set());
-  };
-
-  const handleBulkCompleted = () => {
-    // Temporary UI - no backend
-    setSelectedIds(new Set());
-  };
-
-  const handleDelete = (e: React.MouseEvent, _id: string) => {
-    e.stopPropagation();
-    // Temporary UI - no backend
   };
 
   const clearFilters = () => {
@@ -147,6 +136,28 @@ export function ProjectsList() {
   };
 
   const hasActiveFilters = statusFilter !== 'all' || categoryFilter !== 'all' || featuredFilter !== 'all' || search;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <LoadingSkeleton className="h-8 w-48" />
+            <LoadingSkeleton className="h-4 w-64 mt-2" />
+          </div>
+          <LoadingSkeleton className="h-11 w-32" />
+        </div>
+        <div className="rounded-xl border bg-card p-6 space-y-4">
+          <LoadingSkeleton className="h-10 w-full" />
+          <LoadingSkeleton className="h-6 w-full" count={5} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -206,51 +217,56 @@ export function ProjectsList() {
               animate={{ opacity: 1, height: 'auto' }}
               className="flex flex-wrap gap-3 pt-2"
             >
-              <select
+              <Dropdown
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">{t('dashboard.projects.allStatuses')}</option>
-                <option value="planning">{t('dashboard.home.statusPlanning')}</option>
-                <option value="inProgress">{t('dashboard.home.statusInProgress')}</option>
-                <option value="completed">{t('dashboard.home.statusCompleted')}</option>
-                <option value="onHold">{t('dashboard.home.statusOnHold')}</option>
-                <option value="cancelled">{t('dashboard.home.statusCancelled')}</option>
-              </select>
+                onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.projects.allStatuses')}
+                options={[
+                  { value: 'planning', label: t('dashboard.home.statusPlanning') },
+                  { value: 'in-progress', label: t('dashboard.home.statusInProgress') },
+                  { value: 'completed', label: t('dashboard.home.statusCompleted') },
+                  { value: 'on-hold', label: t('dashboard.home.statusOnHold') },
+                  { value: 'cancelled', label: t('dashboard.home.statusCancelled') },
+                ]}
+                className="w-48"
+              />
 
-              <select
+              <Dropdown
                 value={categoryFilter}
-                onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">{t('dashboard.projects.allCategories')}</option>
-                <option value="commercial">{t('dashboard.home.categoryCommercial')}</option>
-                <option value="residential">{t('dashboard.home.categoryResidential')}</option>
-                <option value="infrastructure">{t('dashboard.home.categoryInfrastructure')}</option>
-                <option value="industrial">{t('dashboard.home.categoryIndustrial')}</option>
-                <option value="educational">{t('dashboard.home.categoryEducational')}</option>
-              </select>
+                onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.projects.allCategories')}
+                options={[
+                  { value: 'commercial', label: t('dashboard.home.categoryCommercial') },
+                  { value: 'residential', label: t('dashboard.home.categoryResidential') },
+                  { value: 'infrastructure', label: t('dashboard.home.categoryInfrastructure') },
+                  { value: 'industrial', label: t('dashboard.home.categoryIndustrial') },
+                  { value: 'educational', label: t('dashboard.home.categoryEducational') },
+                ]}
+                className="w-48"
+              />
 
-              <select
+              <Dropdown
                 value={featuredFilter}
-                onChange={(e) => { setFeaturedFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">{t('dashboard.projects.all')}</option>
-                <option value="featured">{t('dashboard.projects.featuredOnly')}</option>
-                <option value="nonFeatured">{t('dashboard.projects.nonFeatured')}</option>
-              </select>
+                onChange={(val) => { setFeaturedFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.projects.all')}
+                options={[
+                  { value: 'featured', label: t('dashboard.projects.featuredOnly') },
+                  { value: 'nonFeatured', label: t('dashboard.projects.nonFeatured') },
+                ]}
+                className="w-44"
+              />
 
-              <select
+              <Dropdown
                 value={sortField}
-                onChange={(e) => setSortField(e.target.value as SortField)}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="createdAt">{t('dashboard.projects.sortDate')}</option>
-                <option value="titleEn">{t('dashboard.projects.sortName')}</option>
-                <option value="status">{t('dashboard.projects.sortStatus')}</option>
-              </select>
+                onChange={(val) => setSortField(val as SortField)}
+                placeholder={t('dashboard.projects.sortDate')}
+                options={[
+                  { value: 'createdAt', label: t('dashboard.projects.sortDate') },
+                  { value: 'title', label: t('dashboard.projects.sortName') },
+                  { value: 'status', label: t('dashboard.projects.sortStatus') },
+                ]}
+                className="w-44"
+              />
 
               <button
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -285,20 +301,6 @@ export function ProjectsList() {
             >
               <Trash2 className="h-3.5 w-3.5" />
               {t('dashboard.projects.bulkDelete')}
-            </button>
-            <button
-              onClick={handleBulkFeatured}
-              className="text-sm text-secondary hover:underline flex items-center gap-1"
-            >
-              <Star className="h-3.5 w-3.5" />
-              {t('dashboard.projects.bulkMarkFeatured')}
-            </button>
-            <button
-              onClick={handleBulkCompleted}
-              className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-            >
-              <CheckCheck className="h-3.5 w-3.5" />
-              {t('dashboard.projects.bulkMarkCompleted')}
             </button>
           </div>
         )}
@@ -339,7 +341,7 @@ export function ProjectsList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {paginatedProjects.length === 0 ? (
+              {filteredProjects.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
@@ -350,13 +352,13 @@ export function ProjectsList() {
                   </td>
                 </tr>
               ) : (
-                paginatedProjects.map((project) => {
-                  const statusClass = statusColorMap[project.status] || '';
+                filteredProjects.map((project) => {
+                  const statusClass = statusColorMap[project.status] || statusColorMap.planning;
                   return (
                     <tr
                       key={project.id}
                       className="hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/dashboard/projects/${project.id}`)}
+                      onClick={() => navigate(`/dashboard/projects/${project.slug}`)}
                     >
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <input
@@ -369,48 +371,48 @@ export function ProjectsList() {
                       <td className="px-4 py-3">
                         <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted">
                           <img
-                            src={project.coverImage}
-                            alt={isAr ? project.titleAr : project.titleEn}
+                            src={project.thumbnail || project.images?.[0] || ''}
+                            alt={isAr ? project.titleAr : project.title}
                             className="h-full w-full object-cover"
                           />
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm font-medium text-foreground">
-                          {isAr ? project.titleAr : project.titleEn}
+                          {isAr ? project.titleAr : project.title}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-muted-foreground">
-                          {t(`dashboard.home.${project.category === 'commercial' ? 'categoryCommercial' : project.category === 'residential' ? 'categoryResidential' : project.category === 'infrastructure' ? 'categoryInfrastructure' : project.category === 'industrial' ? 'categoryIndustrial' : 'categoryEducational'}`)}
+                          {isAr && project.categoryAr ? project.categoryAr : project.category}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusClass}`}>
-                          {t(`dashboard.home.status${project.status.charAt(0).toUpperCase() + project.status.slice(1)}` as any)}
+                          {t(`dashboard.home.status${project.status === 'in-progress' ? 'InProgress' : project.status === 'on-hold' ? 'OnHold' : project.status.charAt(0).toUpperCase() + project.status.slice(1)}` as any)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {project.featured ? (
+                        {project.isFeatured ? (
                           <Star className="h-4 w-4 text-secondary fill-secondary" />
                         ) : (
                           <StarOff className="h-4 w-4 text-muted-foreground/50" />
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {project.createdAt}
+                        {new Date(project.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => navigate(`/dashboard/projects/${project.id}`)}
+                            onClick={() => navigate(`/dashboard/projects/${project.slug}`)}
                             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                             title={t('dashboard.projects.view')}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => navigate(`/dashboard/projects/${project.id}/edit`)}
+                            onClick={() => navigate(`/dashboard/projects/${project.slug}/edit`)}
                             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
                             title={t('dashboard.projects.edit')}
                           >
@@ -418,10 +420,15 @@ export function ProjectsList() {
                           </button>
                           <button
                             onClick={(e) => handleDelete(e, project.id)}
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"
+                            disabled={deleteProject.isPending}
+                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors disabled:opacity-50"
                             title={t('dashboard.projects.delete')}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {deleteProject.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -437,27 +444,28 @@ export function ProjectsList() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{t('dashboard.projects.showing')}</span>
             <span className="font-medium text-foreground">
-              {filteredProjects.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
+              {pagination?.total === 0 ? 0 : ((pagination?.page || 1) - 1) * (pagination?.limit || 10) + 1}
             </span>
             <span>{t('dashboard.projects.to')}</span>
             <span className="font-medium text-foreground">
-              {Math.min(currentPage * itemsPerPage, filteredProjects.length)}
+              {Math.min((pagination?.page || 1) * (pagination?.limit || 10), pagination?.total || 0)}
             </span>
             <span>{t('dashboard.projects.of')}</span>
-            <span className="font-medium text-foreground">{filteredProjects.length}</span>
+            <span className="font-medium text-foreground">{pagination?.total || 0}</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={itemsPerPage}
-              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="h-9 px-2 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
+            <Dropdown
+              value={String(itemsPerPage)}
+              onChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}
+              options={[
+                { value: '5', label: '5' },
+                { value: '10', label: '10' },
+                { value: '20', label: '20' },
+                { value: '50', label: '50' },
+              ]}
+              className="w-20"
+            />
 
             <div className="flex items-center gap-1">
               <button

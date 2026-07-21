@@ -2,15 +2,18 @@ import { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardHeader } from './DashboardHeader';
+import { useAuthStore } from '@store/authStore';
 import { ROUTES } from '@constants/route.constants';
 
 export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
 
   const handleLogout = () => {
-    navigate(ROUTES.DASHBOARD_LOGIN);
+    logout();
+    navigate(ROUTES.DASHBOARD_LOGIN, { replace: true });
   };
 
   return (

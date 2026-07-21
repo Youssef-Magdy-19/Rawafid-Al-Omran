@@ -1,26 +1,64 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
-import { mockProjects } from '@data/dashboardMockData';
-import { ProjectForm, type ProjectFormData } from './ProjectForm';
+import { useProject, useUpdateProject } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { ErrorState } from '@components/ui/ErrorState';
+import { LoadingSkeleton } from '@components/ui/LoadingSkeleton';
+import { parseApiFieldErrors } from '@utils/api';
+import { ProjectForm } from './ProjectForm';
 
 export function EditProject() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { addToast } = useToast();
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
-  const project = useMemo(() => {
-    return mockProjects.find((p) => p.id === id);
-  }, [id]);
+  const { data: project, isLoading, isError, refetch } = useProject(id || '');
+  const updateProject = useUpdateProject();
+
+  const handleSubmit = (data: Record<string, unknown>) => {
+    if (!project) return;
+    setServerErrors({});
+    updateProject.mutate(
+      { id: project.id, data },
+      {
+        onSuccess: () => {
+          addToast(t('dashboard.editProject.updatedSuccess'), 'success');
+          navigate(`/dashboard/projects/${project.slug}`);
+        },
+        onError: (error) => {
+          const parsed = parseApiFieldErrors(error);
+          setServerErrors(parsed);
+          if (!Object.keys(parsed).length) {
+            addToast(t('common.error'), 'error');
+          }
+        },
+      }
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <LoadingSkeleton className="h-8 w-48" />
+        <LoadingSkeleton className="h-96 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   if (!project) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg font-medium text-foreground">Project not found</p>
+        <p className="text-lg font-medium text-foreground">{t('dashboard.projectDetails.notFound')}</p>
         <button
           onClick={() => navigate(ROUTES.DASHBOARD_PROJECTS)}
           className="mt-4 text-sm text-primary hover:underline"
@@ -30,15 +68,6 @@ export function EditProject() {
       </div>
     );
   }
-
-  const handleSubmit = (_data: ProjectFormData) => {
-    setIsSubmitting(true);
-    // Temporary UI - no backend
-    setTimeout(() => {
-      setIsSubmitting(false);
-      navigate(`/dashboard/projects/${id}`);
-    }, 1000);
-  };
 
   return (
     <div className="space-y-6">
@@ -66,7 +95,8 @@ export function EditProject() {
         <ProjectForm
           initialData={project}
           onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
+          isSubmitting={updateProject.isPending}
+          serverErrors={serverErrors}
         />
       </motion.div>
     </div>

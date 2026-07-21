@@ -1,98 +1,120 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Plus,
-  Search,
-  SlidersHorizontal,
-  Eye,
-  Pencil,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  X,
-  ArrowUpDown,
-  HelpCircle,
-  Send,
-  Ban,
-  Star,
+  Plus, Search, SlidersHorizontal, Eye, Pencil, Trash2,
+  ChevronLeft, ChevronRight, X, ArrowUpDown, HelpCircle,
+  Send, Ban,
 } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
-import { mockFaqs, faqCategoryLabels } from '@data/faqMockData';
+import { useFaqsList, useDeleteFaq, useUpdateFaq } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { LoadingSkeleton } from '@components/ui/LoadingSkeleton';
+import { ErrorState } from '@components/ui/ErrorState';
+import { Dropdown } from '@components/ui/Dropdown';
 
-const categoryColorMap: Record<string, string> = {
-  general: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-  pricing: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-  process: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
-  technical: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-};
-
-type SortField = 'questionEn' | 'displayOrder' | 'category';
-type SortOrder = 'asc' | 'desc';
+type SortField = 'question' | 'order' | 'category';
 
 export function FaqList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [sortField, setSortField] = useState<SortField>('displayOrder');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('order');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [featuredFilter, setFeaturedFilter] = useState<string>('all');
 
-  const toggleExpand = (id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
+  const queryParams = useMemo(() => {
+    const params: Record<string, string> = { page: String(currentPage), limit: String(itemsPerPage) };
+    if (search) params.search = search;
+    if (categoryFilter !== 'all') params.category = categoryFilter;
+    if (statusFilter === 'active') params.isActive = 'true';
+    else if (statusFilter === 'inactive') params.isActive = 'false';
+    if (sortField) params.sortBy = sortField;
+    if (sortOrder) params.sortOrder = sortOrder;
+    return params;
+  }, [search, categoryFilter, statusFilter, sortField, sortOrder, currentPage, itemsPerPage]);
 
-  const filtered = useMemo(() => {
-    let result = [...mockFaqs];
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (f) =>
-          f.questionAr.includes(q) ||
-          f.questionEn.toLowerCase().includes(q) ||
-          f.answerAr.includes(q) ||
-          f.answerEn.toLowerCase().includes(q)
-      );
-    }
-    if (categoryFilter !== 'all') result = result.filter((f) => f.category === categoryFilter);
-    if (activeFilter === 'active') result = result.filter((f) => f.isActive);
-    else if (activeFilter === 'inactive') result = result.filter((f) => !f.isActive);
-    if (featuredFilter === 'featured') result = result.filter((f) => f.featured);
-    else if (featuredFilter === 'nonFeatured') result = result.filter((f) => !f.featured);
-    result.sort((a, b) => {
-      let cmp = 0;
-      if (sortField === 'questionEn') cmp = a.questionEn.localeCompare(b.questionEn);
-      else if (sortField === 'displayOrder') cmp = a.displayOrder - b.displayOrder;
-      else if (sortField === 'category') cmp = a.category.localeCompare(b.category);
-      return sortOrder === 'asc' ? cmp : -cmp;
-    });
-    return result;
-  }, [search, categoryFilter, activeFilter, featuredFilter, sortField, sortOrder]);
+  const { data, isLoading, isError, refetch } = useFaqsList(queryParams);
+  const deleteFaq = useDeleteFaq();
+  const updateFaq = useUpdateFaq();
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const allSelected = paginated.length > 0 && paginated.every((f) => selectedIds.has(f.id));
+  const faqs = data?.faqs || [];
+  const pagination = data?.pagination;
+  const totalPages = pagination?.totalPages || 0;
+
+  const allSelected = faqs.length > 0 && faqs.every((f) => selectedIds.has(f._id));
+
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
+
   const toggleSelectAll = () => {
     if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(paginated.map((f) => f.id)));
+    else setSelectedIds(new Set(faqs.map((f) => f._id)));
   };
-  const hasActiveFilters = search || categoryFilter !== 'all' || activeFilter !== 'all' || featuredFilter !== 'all';
-  const clearFilters = () => { setSearch(''); setCategoryFilter('all'); setActiveFilter('all'); setFeaturedFilter('all'); setCurrentPage(1); };
-  const categoryOptions = Object.entries(faqCategoryLabels);
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    deleteFaq.mutate(id, {
+      onSuccess: () => {
+        addToast(t('dashboard.faq.deletedSuccess'), 'success');
+        setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      },
+      onError: () => addToast(t('common.error'), 'error'),
+    });
+  };
+
+  const handleBulkDelete = () => {
+    selectedIds.forEach((id) => deleteFaq.mutate(id));
+    addToast(t('dashboard.faq.bulkDeleted'), 'success');
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkAction = (action: 'activate' | 'deactivate') => {
+    selectedIds.forEach((id) => {
+      updateFaq.mutate({ id, data: { isActive: action === 'activate' } });
+    });
+    addToast(t(`dashboard.faq.bulk${action === 'activate' ? 'Activated' : 'Deactivated'}`), 'success');
+    setSelectedIds(new Set());
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = search || categoryFilter !== 'all' || statusFilter !== 'all';
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div><LoadingSkeleton className="h-8 w-48" /><LoadingSkeleton className="h-4 w-64 mt-2" /></div>
+          <LoadingSkeleton className="h-11 w-32" />
+        </div>
+        <div className="rounded-xl border bg-card p-6 space-y-4">
+          <LoadingSkeleton className="h-10 w-full" />
+          <LoadingSkeleton className="h-6 w-full" count={5} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) return <ErrorState onRetry={() => refetch()} />;
 
   return (
     <div className="space-y-6">
@@ -120,45 +142,46 @@ export function FaqList() {
             </div>
             <button onClick={() => setShowFilters(!showFilters)}
               className={`inline-flex items-center gap-2 h-10 px-4 rounded-lg border text-sm font-medium transition-colors ${showFilters || hasActiveFilters ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('dashboard.faq.filterCategory')}</span>
+              <SlidersHorizontal className="h-4 w-4" /><span className="hidden sm:inline">{t('dashboard.faq.filterCategory')}</span>
             </button>
           </div>
+
           {showFilters && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-wrap gap-3 pt-2">
-              <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="all">{t('dashboard.faq.allCategories')}</option>
-                {categoryOptions.map(([key]) => (
-                  <option key={key} value={key}>{t(`faq.categories.${key}` as any)}</option>
-                ))}
-              </select>
-              <select value={activeFilter} onChange={(e) => { setActiveFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="all">{t('dashboard.faq.all')}</option>
-                <option value="active">{t('dashboard.faq.active')}</option>
-                <option value="inactive">{t('dashboard.faq.inactive')}</option>
-              </select>
-              <select value={featuredFilter} onChange={(e) => { setFeaturedFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="all">{t('dashboard.faq.all')}</option>
-                <option value="featured">{t('dashboard.faq.featured')}</option>
-                <option value="nonFeatured">{t('dashboard.faq.inactive')}</option>
-              </select>
-              <select value={sortField} onChange={(e) => setSortField(e.target.value as SortField)}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="displayOrder">{t('dashboard.faq.sortOrder')}</option>
-                <option value="questionEn">{t('dashboard.faq.sortQuestion')}</option>
-                <option value="category">{t('dashboard.faq.category')}</option>
-              </select>
+              <Dropdown
+                value={categoryFilter}
+                onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.faq.allCategories')}
+                options={['general', 'pricing', 'process', 'technical'].map((cat) => ({ value: cat, label: cat }))}
+                className="w-48"
+              />
+              <Dropdown
+                value={statusFilter}
+                onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.faq.all')}
+                options={[
+                  { value: 'active', label: t('dashboard.faq.active') },
+                  { value: 'inactive', label: t('dashboard.faq.inactive') },
+                ]}
+                className="w-44"
+              />
+              <Dropdown
+                value={sortField}
+                onChange={(val) => setSortField(val as SortField)}
+                placeholder={t('dashboard.faq.sortOrder')}
+                options={[
+                  { value: 'order', label: t('dashboard.faq.sortOrder') },
+                  { value: 'question', label: t('dashboard.faq.sortQuestion') },
+                  { value: 'category', label: t('dashboard.faq.category') },
+                ]}
+                className="w-44"
+              />
               <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 className="inline-flex items-center gap-1 h-10 px-3 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted transition-colors">
-                <ArrowUpDown className="h-4 w-4" />
-                {sortOrder === 'asc' ? t('dashboard.faq.ascending') : t('dashboard.faq.descending')}
+                <ArrowUpDown className="h-4 w-4" />{sortOrder === 'asc' ? t('dashboard.faq.ascending') : t('dashboard.faq.descending')}
               </button>
               {hasActiveFilters && (
-                <button onClick={clearFilters}
-                  className="inline-flex items-center gap-1 h-10 px-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors">
+                <button onClick={clearFilters} className="inline-flex items-center gap-1 h-10 px-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors">
                   <X className="h-4 w-4" />Clear
                 </button>
               )}
@@ -170,9 +193,15 @@ export function FaqList() {
           <div className="px-4 py-3 bg-primary/5 border-b border-primary/10 flex items-center gap-3 flex-wrap">
             <span className="text-sm font-medium text-foreground">{selectedIds.size} {t('dashboard.faq.selected')}</span>
             <div className="h-4 w-px bg-border" />
-            <button className="text-sm text-destructive hover:underline flex items-center gap-1"><Trash2 className="h-3.5 w-3.5" />{t('dashboard.faq.bulkDelete')}</button>
-            <button className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"><Send className="h-3.5 w-3.5" />{t('dashboard.faq.bulkActivate')}</button>
-            <button className="text-sm text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"><Ban className="h-3.5 w-3.5" />{t('dashboard.faq.bulkDeactivate')}</button>
+            <button onClick={handleBulkDelete} className="text-sm text-destructive hover:underline flex items-center gap-1">
+              <Trash2 className="h-3.5 w-3.5" />{t('dashboard.faq.bulkDelete')}
+            </button>
+            <button onClick={() => handleBulkAction('activate')} className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+              <Send className="h-3.5 w-3.5" />{t('dashboard.faq.bulkActivate')}
+            </button>
+            <button onClick={() => handleBulkAction('deactivate')} className="text-sm text-amber-600 hover:underline flex items-center gap-1">
+              <Ban className="h-3.5 w-3.5" />{t('dashboard.faq.bulkDeactivate')}
+            </button>
           </div>
         )}
 
@@ -180,22 +209,22 @@ export function FaqList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/50">
-                <th className="px-4 py-3 w-10"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="h-4 w-4 rounded border-input text-primary focus:ring-primary" /></th>
-                <th className="w-10 px-4 py-3" />
+                <th className="px-4 py-3 w-10">
+                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary" />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.questionAr')}</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.questionEn')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.category')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.displayOrder')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.status')}</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.featured')}</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.createdDate')}</th>
                 <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dashboard.faq.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {paginated.length === 0 ? (
+              {faqs.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center">
+                  <td colSpan={7} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <HelpCircle className="h-8 w-8 text-muted-foreground/50" />
                       <p className="text-sm font-medium text-foreground">{t('dashboard.faq.noFaq')}</p>
@@ -204,75 +233,50 @@ export function FaqList() {
                   </td>
                 </tr>
               ) : (
-                paginated.map((faq) => (
-                  <tbody key={faq.id} className="divide-y divide-border/50">
-                    <tr className="hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/dashboard/faq/${faq.id}`)}>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={selectedIds.has(faq.id)} onChange={() => toggleSelect(faq.id)}
-                          className="h-4 w-4 rounded border-input text-primary focus:ring-primary" />
-                      </td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleExpand(faq.id); }}
-                          className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                        >
-                          {expandedId === faq.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground font-medium max-w-[200px] truncate">{faq.questionAr}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground max-w-[200px] truncate">{faq.questionEn}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${categoryColorMap[faq.category] || ''}`}>
-                          {t(`faq.categories.${faq.category}` as any)}
+                faqs.map((faq) => (
+                  <tr key={faq._id} className="hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(ROUTES.DASHBOARD_FAQ_DETAILS.replace(':id', faq._id))}>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(faq._id)} onChange={() => toggleSelect(faq._id)}
+                        className="h-4 w-4 rounded border-input text-primary focus:ring-primary" />
+                    </td>
+                    <td className="px-4 py-3 text-sm text-foreground font-medium max-w-[300px] truncate">{faq.question}</td>
+                    <td className="px-4 py-3">
+                      {faq.category && (
+                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium bg-blue-500/10 text-blue-600 border-blue-500/20">
+                          {faq.category}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{faq.displayOrder}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${faq.isActive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                          {faq.isActive ? t('dashboard.faq.active_badge') : t('dashboard.faq.inactive_badge')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {faq.featured && (
-                          <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
-                            <Star className="h-3 w-3 mr-1" />
-                            {t('dashboard.faq.featured_badge')}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{faq.createdAt}</td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => navigate(`/dashboard/faq/${faq.id}`)}
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"><Eye className="h-4 w-4" /></button>
-                          <button onClick={() => navigate(`/dashboard/faq/${faq.id}/edit`)}
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-primary transition-colors"><Pencil className="h-4 w-4" /></button>
-                          <button onClick={(e) => e.stopPropagation()}
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                    <AnimatePresence>
-                      {expandedId === faq.id && (
-                        <motion.tr
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <td colSpan={10} className="px-4 py-3 bg-muted/30">
-                            <div className="text-sm text-foreground leading-relaxed">
-                              <p className="text-xs text-muted-foreground mb-1">{t('dashboard.faqDetails.arabicAnswer')}</p>
-                              <p className="mb-3">{faq.answerAr}</p>
-                              <p className="text-xs text-muted-foreground mb-1">{t('dashboard.faqDetails.englishAnswer')}</p>
-                              <p>{faq.answerEn}</p>
-                            </div>
-                          </td>
-                        </motion.tr>
                       )}
-                    </AnimatePresence>
-                  </tbody>
+                      {!faq.category && <span className="text-sm text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{faq.order ?? 0}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                        faq.isActive
+                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                          : 'bg-muted text-muted-foreground border-border'
+                      }`}>
+                        {faq.isActive ? t('dashboard.faq.active_badge') : t('dashboard.faq.inactive_badge')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(faq.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => navigate(ROUTES.DASHBOARD_FAQ_DETAILS.replace(':id', faq._id))}
+                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title={t('dashboard.faq.view')}>
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => navigate(ROUTES.DASHBOARD_FAQ_EDIT.replace(':id', faq._id))}
+                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-primary transition-colors" title={t('dashboard.faq.edit')}>
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button onClick={(e) => handleDelete(e, faq._id)} disabled={deleteFaq.isPending}
+                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors disabled:opacity-50" title={t('dashboard.faq.delete')}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
@@ -282,29 +286,32 @@ export function FaqList() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{t('dashboard.faq.showing')}</span>
-            <span className="font-medium text-foreground">{filtered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span>
+            <span className="font-medium text-foreground">{pagination?.total === 0 ? 0 : ((pagination?.page || 1) - 1) * (pagination?.limit || 10) + 1}</span>
             <span>{t('dashboard.faq.to')}</span>
-            <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, filtered.length)}</span>
+            <span className="font-medium text-foreground">{Math.min((pagination?.page || 1) * (pagination?.limit || 10), pagination?.total || 0)}</span>
             <span>{t('dashboard.faq.of')}</span>
-            <span className="font-medium text-foreground">{filtered.length}</span>
+            <span className="font-medium text-foreground">{pagination?.total || 0}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="h-9 px-2 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value={5}>5</option><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option>
-            </select>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}
-                className="h-9 w-9 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"><ChevronLeft className="h-4 w-4" /></button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const start = Math.max(1, currentPage - 2); const page = start + i;
-                if (page > totalPages) return null;
-                return (<button key={page} onClick={() => setCurrentPage(page)}
-                  className={`h-9 w-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${page === currentPage ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{page}</button>);
-              })}
-              <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages || totalPages === 0}
-                className="h-9 w-9 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"><ChevronRight className="h-4 w-4" /></button>
-            </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}
+              className="h-9 w-9 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const start = Math.max(1, currentPage - 2);
+              const page = start + i;
+              if (page > totalPages) return null;
+              return (
+                <button key={page} onClick={() => setCurrentPage(page)}
+                  className={`h-9 w-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${page === currentPage ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+                  {page}
+                </button>
+              );
+            })}
+            <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages || totalPages === 0}
+              className="h-9 w-9 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </motion.div>

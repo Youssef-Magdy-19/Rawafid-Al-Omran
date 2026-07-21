@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Search,
@@ -16,29 +17,36 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@providers/ThemeProvider';
 import { useLanguage } from '@providers/LanguageProvider';
+import { useAuthStore } from '@store/authStore';
+import { apiClient } from '@services/api/client';
+import { ROUTES } from '@constants/route.constants';
 import { cn } from '@utils/cn';
+import type { Notification } from '@services/api/types';
 
 interface DashboardHeaderProps {
   onMenuToggle: () => void;
   onLogout: () => void;
 }
 
-const notifications = [
-  { id: '1', title: 'New shipment SHP-2024-001 created', time: '5m ago', read: false },
-  { id: '2', title: 'Shipment SHP-2024-002 has been delivered', time: '1h ago', read: false },
-  { id: '3', title: 'Shipment SHP-2024-003 is delayed', time: '3h ago', read: true },
-  { id: '4', title: 'Monthly report is ready for review', time: '1d ago', read: true },
-];
-
 export function DashboardHeader({ onMenuToggle, onLogout }: DashboardHeaderProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage } = useLanguage();
+  const user = useAuthStore((state) => state.user);
   const [searchFocused, setSearchFocused] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  useEffect(() => {
+    apiClient
+      .get<{ success: boolean; data: Notification[] }>('/dashboard/notifications')
+      .then((res) => setNotifications(res.data.data || []))
+      .catch(() => {});
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur-xl px-4 lg:px-6 gap-4">
@@ -132,26 +140,34 @@ export function DashboardHeader({ onMenuToggle, onLogout }: DashboardHeaderProps
                     </button>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
-                    {notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        className={cn(
-                          'flex items-start gap-3 p-4 border-b border-border/50 transition-colors hover:bg-muted/50 cursor-pointer',
-                          !notif.read && 'bg-primary/5'
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            'mt-1 h-2 w-2 shrink-0 rounded-full',
-                            notif.read ? 'bg-muted-foreground/30' : 'bg-primary'
-                          )}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground truncate">{notif.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{notif.time}</p>
-                        </div>
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-muted-foreground">
+                        {t('dashboard.header.noNotifications')}
                       </div>
-                    ))}
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif._id}
+                          className={cn(
+                            'flex items-start gap-3 p-4 border-b border-border/50 transition-colors hover:bg-muted/50 cursor-pointer',
+                            !notif.isRead && 'bg-primary/5'
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              'mt-1 h-2 w-2 shrink-0 rounded-full',
+                              notif.isRead ? 'bg-muted-foreground/30' : 'bg-primary'
+                            )}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground truncate">{notif.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(notif.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                   <div className="p-3 border-t border-border">
                     <button className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium text-primary hover:bg-primary/5 transition-colors">
@@ -177,8 +193,10 @@ export function DashboardHeader({ onMenuToggle, onLogout }: DashboardHeaderProps
               <User className="h-4 w-4" />
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-foreground leading-tight">Ahmed Ali</p>
-              <p className="text-[11px] text-muted-foreground leading-tight">Administrator</p>
+              <p className="text-sm font-medium text-foreground leading-tight">
+                {user ? `${user.firstName} ${user.lastName}` : 'User'}
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-tight capitalize">{user?.role || 'User'}</p>
             </div>
           </button>
 
@@ -197,19 +215,30 @@ export function DashboardHeader({ onMenuToggle, onLogout }: DashboardHeaderProps
                   )}
                 >
                   <div className="p-3 border-b border-border">
-                    <p className="text-sm font-medium text-foreground">Ahmed Ali</p>
-                    <p className="text-xs text-muted-foreground">ahmed@rawafid.com</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {user ? `${user.firstName} ${user.lastName}` : 'User'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
                   </div>
                   <div className="p-2 space-y-1">
-                    <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                    <button
+                      onClick={() => navigate(ROUTES.DASHBOARD_ADMIN_PROFILE)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    >
                       <User className="h-4 w-4 text-muted-foreground" />
                       {t('dashboard.header.profile')}
                     </button>
-                    <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                    <button
+                      onClick={() => navigate(ROUTES.DASHBOARD_GENERAL_SETTINGS)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    >
                       <Settings className="h-4 w-4 text-muted-foreground" />
                       {t('dashboard.header.accountSettings')}
                     </button>
-                    <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                    <button
+                      onClick={() => navigate(ROUTES.DASHBOARD_SUPPORT)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    >
                       <HelpCircle className="h-4 w-4 text-muted-foreground" />
                       {t('dashboard.header.helpCenter')}
                     </button>

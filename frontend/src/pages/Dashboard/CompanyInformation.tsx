@@ -6,12 +6,39 @@ import {
   ArrowLeft, Save, RotateCcw, Upload, Building2, Globe, Mail, Phone, MapPin,
   Clock, Link, Copyright, FileText, MessageCircle,
 } from 'lucide-react';
-import { mockCompanyInfo } from '@data/adminMockData';
+// TODO: Backend API does not provide a company information endpoint.
+// Replace with real data from a GET/PUT /company endpoint when available.
+const companyInfoDefaults = {
+  logo: '/images/logo.png',
+  favicon: '/images/favicon.ico',
+  nameAr: 'روافد العمران للمقاولات العامة',
+  nameEn: 'Rawafid Al Omran General Contracting',
+  shortDescAr: 'شركة رائدة في مجال المقاولات والبناء والهندسة',
+  shortDescEn: 'A leading company in contracting, construction, and engineering',
+  fullDescAr: 'تأسست شركة روافد العمران للمقاولات العامة في عام 1998، ومنذ ذلك الحين وهي تقدم حلولاً متكاملة في مجال البناء والهندسة. تمتلك الشركة فريقاً من أكثر من 200 متخصص في مختلف المجالات الهندسية والإنشائية، ونفذت العديد من المشاريع الكبرى في جميع أنحاء المملكة العربية السعودية ودول الخليج.',
+  fullDescEn: 'Rawafid Al Omran General Contracting was founded in 1998, and since then has been providing integrated solutions in construction and engineering. The company has a team of over 200 specialists in various engineering and construction fields, and has executed numerous major projects throughout Saudi Arabia and the Gulf countries.',
+  email: 'info@rawafid-alomran.com',
+  phone: '+966 55 123 4567',
+  whatsapp: '+966 55 123 4567',
+  addressAr: 'الرياض - حي النرجس - طريق الملك عبدالله',
+  addressEn: 'Riyadh - Al Narjis District - King Abdullah Road',
+  googleMapsUrl: 'https://maps.google.com/?q=Rawafid+Al+Omran',
+  workingHours: 'SAT - THU: 8:00 AM - 5:00 PM',
+  socialLinks: [
+    { platform: 'twitter', url: 'https://twitter.com/rawafid' },
+    { platform: 'linkedin', url: 'https://linkedin.com/company/rawafid' },
+    { platform: 'instagram', url: 'https://instagram.com/rawafid' },
+    { platform: 'facebook', url: 'https://facebook.com/rawafid' },
+    { platform: 'youtube', url: 'https://youtube.com/@rawafid' },
+  ],
+  copyright: '© 2024 Rawafid Al Omran General Contracting. All rights reserved.',
+  footerText: 'Rawafid Al Omran - Your trusted partner in construction and engineering since 1998',
+};
 
 export function CompanyInformation() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ ...mockCompanyInfo });
+  const [form, setForm] = useState({ ...companyInfoDefaults });
 
   const updateField = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
   const updateSocial = (idx: number, field: 'platform' | 'url', value: string) => {
@@ -21,7 +48,7 @@ export function CompanyInformation() {
   };
   const addSocial = () => updateField('socialLinks', [...form.socialLinks, { platform: '', url: '' }]);
   const removeSocial = (idx: number) => updateField('socialLinks', form.socialLinks.filter((_, i) => i !== idx));
-  const resetForm = () => setForm({ ...mockCompanyInfo });
+  const resetForm = () => setForm({ ...companyInfoDefaults });
 
   const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">

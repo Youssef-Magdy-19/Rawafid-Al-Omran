@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
 import { mockEquipment, equipmentCategoryLabels, operatingStatusLabels } from '@data/equipmentMockData';
+import { Dropdown } from '@components/ui/Dropdown';
 
 const categoryColorMap: Record<string, string> = {
   heavyMachinery: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
@@ -203,47 +204,48 @@ export function EquipmentList() {
               animate={{ opacity: 1, height: 'auto' }}
               className="flex flex-wrap gap-3 pt-2"
             >
-              <select
+              <Dropdown
                 value={categoryFilter}
-                onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">{t('dashboard.equipment.allCategories')}</option>
-                {categoryOptions.map(([key]) => (
-                  <option key={key} value={key}>{t(`dashboard.equipmentDetails.${key}` as any)}</option>
-                ))}
-              </select>
+                onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.equipment.allCategories')}
+                options={categoryOptions.map(([key]) => ({ value: key, label: t(`dashboard.equipmentDetails.${key}` as any) }))}
+                className="w-48"
+              />
 
-              <select
+              <Dropdown
                 value={availabilityFilter}
-                onChange={(e) => { setAvailabilityFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">{t('dashboard.equipment.all')}</option>
-                <option value="available">{t('dashboard.equipment.available')}</option>
-                <option value="unavailable">{t('dashboard.equipment.underMaintenance')}</option>
-              </select>
+                onChange={(val) => { setAvailabilityFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.equipment.all')}
+                options={[
+                  { value: 'available', label: t('dashboard.equipment.available') },
+                  { value: 'unavailable', label: t('dashboard.equipment.underMaintenance') },
+                ]}
+                className="w-44"
+              />
 
-              <select
+              <Dropdown
                 value={maintenanceFilter}
-                onChange={(e) => { setMaintenanceFilter(e.target.value); setCurrentPage(1); }}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">{t('dashboard.equipment.all')}</option>
-                <option value="overdue">{t('dashboard.equipment.filterMaintenanceStatus')} - Overdue</option>
-                <option value="upcoming">Upcoming (30 days)</option>
-              </select>
+                onChange={(val) => { setMaintenanceFilter(val); setCurrentPage(1); }}
+                placeholder={t('dashboard.equipment.all')}
+                options={[
+                  { value: 'overdue', label: `${t('dashboard.equipment.filterMaintenanceStatus')} - Overdue` },
+                  { value: 'upcoming', label: 'Upcoming (30 days)' },
+                ]}
+                className="w-48"
+              />
 
-              <select
+              <Dropdown
                 value={sortField}
-                onChange={(e) => setSortField(e.target.value as SortField)}
-                className="h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="nameEn">{t('dashboard.equipment.sortName')}</option>
-                <option value="category">{t('dashboard.equipment.category')}</option>
-                <option value="operatingStatus">{t('dashboard.equipment.sortStatus')}</option>
-                <option value="nextMaintenanceDate">{t('dashboard.equipment.sortDate')}</option>
-              </select>
+                onChange={(val) => setSortField(val as SortField)}
+                placeholder={t('dashboard.equipment.sortName')}
+                options={[
+                  { value: 'nameEn', label: t('dashboard.equipment.sortName') },
+                  { value: 'category', label: t('dashboard.equipment.category') },
+                  { value: 'operatingStatus', label: t('dashboard.equipment.sortStatus') },
+                  { value: 'nextMaintenanceDate', label: t('dashboard.equipment.sortDate') },
+                ]}
+                className="w-44"
+              />
 
               <button
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -421,16 +423,17 @@ export function EquipmentList() {
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={itemsPerPage}
-              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="h-9 px-2 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
+            <Dropdown
+              value={String(itemsPerPage)}
+              onChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}
+              options={[
+                { value: '5', label: '5' },
+                { value: '10', label: '10' },
+                { value: '20', label: '20' },
+                { value: '50', label: '50' },
+              ]}
+              className="w-20"
+            />
 
             <div className="flex items-center gap-1">
               <button

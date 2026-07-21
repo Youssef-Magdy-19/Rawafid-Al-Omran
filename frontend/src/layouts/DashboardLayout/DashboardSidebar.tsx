@@ -100,9 +100,11 @@ export function DashboardSidebar({
             key={item.key}
             to={item.path}
             onClick={onMobileClose}
+            title={collapsed ? t(`dashboard.sidebar.${item.key}`) : undefined}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                collapsed && 'justify-center',
                 isActive
                   ? 'bg-primary/10 text-primary shadow-sm'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -146,16 +148,17 @@ export function DashboardSidebar({
           </AnimatePresence>
         </button>
 
-        <button
-          onClick={onToggle}
-          className="hidden lg:flex w-full items-center justify-center rounded-lg px-3 py-2 text-muted-foreground transition-all duration-200 hover:bg-muted"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </button>
+            <button
+              onClick={onToggle}
+              className="hidden lg:flex w-full items-center justify-center rounded-lg px-3 py-2 text-muted-foreground transition-all duration-200 hover:bg-muted"
+              title={collapsed ? t('dashboard.sidebar.expand') : t('dashboard.sidebar.collapse')}
+            >
+              {collapsed ? (
+                isRTL ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+              ) : (
+                isRTL ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />
+              )}
+            </button>
       </div>
     </div>
   );
@@ -165,7 +168,7 @@ export function DashboardSidebar({
       <aside
         className={cn(
           'hidden lg:flex h-screen flex-col transition-all duration-300 ease-in-out',
-          collapsed ? 'w-16' : 'w-64'
+          collapsed ? 'w-14' : 'w-64'
         )}
       >
         {sidebarContent}
@@ -186,13 +189,19 @@ export function DashboardSidebar({
               animate={{ x: 0 }}
               exit={{ x: isRTL ? '100%' : '-100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed inset-y-0 left-0 z-50 w-72 lg:hidden"
+              className={cn(
+                "fixed inset-y-0 z-50 w-72 lg:hidden",
+                isRTL ? 'right-0' : 'left-0'
+              )}
             >
               <div className="relative h-full">
                 {sidebarContent}
                 <button
                   onClick={onMobileClose}
-                  className="absolute top-4 right-4 rounded-lg p-1 text-muted-foreground hover:bg-muted lg:hidden"
+                  className={cn(
+                    "absolute top-4 rounded-lg p-1 text-muted-foreground hover:bg-muted lg:hidden",
+                    isRTL ? 'left-4' : 'right-4'
+                  )}
                 >
                   <X className="h-5 w-5" />
                 </button>

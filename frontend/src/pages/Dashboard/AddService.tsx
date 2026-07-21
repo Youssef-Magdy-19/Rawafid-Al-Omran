@@ -4,45 +4,47 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
-import { ServiceForm, type ServiceFormData } from './ServiceForm';
+import { useCreateService } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { parseApiFieldErrors } from '@utils/api';
+import { ServiceForm } from './ServiceForm';
 
 export function AddService() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createService = useCreateService();
+  const { addToast } = useToast();
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (_data: ServiceFormData) => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      navigate(ROUTES.DASHBOARD_SERVICES);
-    }, 1000);
+  const handleSubmit = (data: Record<string, unknown>) => {
+    setServerErrors({});
+    createService.mutate(data, {
+      onSuccess: () => {
+        addToast(t('dashboard.addService.createdSuccess'), 'success');
+        navigate(ROUTES.DASHBOARD_SERVICES);
+      },
+      onError: (error) => {
+        const parsed = parseApiFieldErrors(error);
+        setServerErrors(parsed);
+        if (!Object.keys(parsed).length) {
+          addToast(t('common.error'), 'error');
+        }
+      },
+    });
   };
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <button
-          onClick={() => navigate(ROUTES.DASHBOARD_SERVICES)}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t('dashboard.services.pageTitle')}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <button onClick={() => navigate(ROUTES.DASHBOARD_SERVICES)}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+          <ArrowLeft className="h-4 w-4" />{t('dashboard.services.pageTitle')}
         </button>
         <h1 className="text-2xl font-bold text-foreground">{t('dashboard.addService.pageTitle')}</h1>
         <p className="text-muted-foreground mt-1">{t('dashboard.addService.pageDescription')}</p>
       </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
-        <ServiceForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
+        <ServiceForm onSubmit={handleSubmit} isSubmitting={createService.isPending} serverErrors={serverErrors} />
       </motion.div>
     </div>
   );

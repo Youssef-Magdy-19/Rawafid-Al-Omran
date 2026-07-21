@@ -54,7 +54,7 @@ export function EquipmentDetails() {
   if (!equipment) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg font-medium text-foreground">Equipment not found</p>
+        <p className="text-lg font-medium text-foreground">{t('dashboard.equipmentDetails.notFound')}</p>
         <button
           onClick={() => navigate(ROUTES.DASHBOARD_EQUIPMENT)}
           className="mt-4 text-sm text-primary hover:underline"

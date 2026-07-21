@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes as ReactRoutes, Route } from 'react-router-dom';
 import { MainLayout } from '@layouts/MainLayout/MainLayout';
 import { DashboardLayout } from '@layouts/DashboardLayout/DashboardLayout';
+import { AuthGuard } from '@components/auth/AuthGuard';
 import { HomePage } from '@pages/Home/HomePage';
-import { SubscribersList, SubscriberDetails, Administration, CompanyInformation, GeneralSettings, AdminProfile, EditProfile, ChangePassword, ReportsDashboard, NotificationsCenter, RecentActivity } from '@pages/Dashboard';
 import { AboutPage } from '@pages/About/AboutPage';
 import { ServicesPage } from '@pages/Services/ServicesPage';
 import { ProjectsPage } from '@pages/Projects/ProjectsPage';
@@ -19,14 +19,21 @@ import { PrivacyPolicyPage } from '@pages/Legal/PrivacyPolicyPage';
 import { TermsOfServicePage } from '@pages/Legal/TermsOfServicePage';
 import { CookiePolicyPage } from '@pages/Legal/CookiePolicyPage';
 import { NotFoundPage } from '@pages/NotFound/NotFoundPage';
-import { DashboardHome, DashboardLogin, ProjectsList, AddProject, EditProject, ProjectDetails, ServicesList, AddService, EditService, ServiceDetails, EquipmentList, AddEquipment, EditEquipment, EquipmentDetails, TeamList, AddTeamMember, EditTeamMember, TeamMemberDetails, BlogList, AddBlogPost, EditBlogPost, BlogPostDetails, TestimonialsList, AddTestimonial, EditTestimonial, TestimonialDetails, PartnersList, AddPartner, EditPartner, PartnerDetails, FaqList, AddFaq, EditFaq, FaqDetails, QuoteRequestsList, QuoteRequestDetails, ContactMessagesList, ContactMessageDetails, DashboardPlaceholder } from '@pages/Dashboard';
+import { DashboardHome, DashboardLogin, ProjectsList, AddProject, EditProject, ProjectDetails, ServicesList, AddService, EditService, ServiceDetails, EquipmentList, AddEquipment, EditEquipment, EquipmentDetails, TeamList, AddTeamMember, EditTeamMember, TeamMemberDetails, BlogList, AddBlogPost, EditBlogPost, BlogPostDetails, TestimonialsList, AddTestimonial, EditTestimonial, TestimonialDetails, PartnersList, AddPartner, EditPartner, PartnerDetails, FaqList, AddFaq, EditFaq, FaqDetails, QuoteRequestsList, QuoteRequestDetails, ContactMessagesList, ContactMessageDetails, SubscribersList, SubscriberDetails, Administration, CompanyInformation, GeneralSettings, AdminProfile, EditProfile, ChangePassword, ReportsDashboard, NotificationsCenter, RecentActivity, DashboardPlaceholder } from '@pages/Dashboard';
 
 export function AppRoutes() {
   return (
     <BrowserRouter>
       <ReactRoutes>
         <Route path="/dashboard/login" element={<DashboardLogin />} />
-        <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route
+          path="/dashboard"
+          element={
+            <AuthGuard>
+              <DashboardLayout />
+            </AuthGuard>
+          }
+        >
           <Route index element={<DashboardHome />} />
           <Route path="projects" element={<ProjectsList />} />
           <Route path="projects/add" element={<AddProject />} />

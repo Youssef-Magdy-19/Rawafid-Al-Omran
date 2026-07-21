@@ -9,8 +9,10 @@ export function AddEquipment() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (_data: EquipmentFormData) => {
+    setServerErrors({});
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
@@ -34,7 +36,7 @@ export function AddEquipment() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
       >
-        <EquipmentForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+        <EquipmentForm onSubmit={handleSubmit} isSubmitting={isSubmitting} serverErrors={serverErrors} />
       </motion.div>
     </div>
   );

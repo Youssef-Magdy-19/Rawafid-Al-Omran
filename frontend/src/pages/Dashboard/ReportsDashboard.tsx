@@ -2,14 +2,83 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
-  BarChart3, TrendingUp, TrendingDown, Download, Printer, Calendar,
-  Building2, Users, DollarSign, FileSpreadsheet, Mail, Briefcase,
+  BarChart3, TrendingUp, TrendingDown, Download, Printer,
+  Building2, Users, FileSpreadsheet, Mail, HardHat, MessageSquare,
   PieChart, Activity,
 } from 'lucide-react';
-import { kpiData, monthlyGrowth, projectStats, serviceStats, quoteStats, contactStats } from '@data/reportsMockData';
+import { useDashboardStats } from '@hooks/dashboard/useDashboard';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Dropdown } from '@components/ui/Dropdown';
+
+// TODO: Backend API does not provide monthly growth data.
+// Replace with real data from GET /dashboard/chart-data when endpoint returns typed chart data.
+const monthlyGrowth = [
+  { month: 'Jan', projects: 3, revenue: 1200000, clients: 5 },
+  { month: 'Feb', projects: 5, revenue: 2100000, clients: 7 },
+  { month: 'Mar', projects: 4, revenue: 1800000, clients: 6 },
+  { month: 'Apr', projects: 7, revenue: 3200000, clients: 9 },
+  { month: 'May', projects: 6, revenue: 2800000, clients: 8 },
+  { month: 'Jun', projects: 8, revenue: 3850000, clients: 11 },
+  { month: 'Jul', projects: 5, revenue: 2400000, clients: 6 },
+  { month: 'Aug', projects: 6, revenue: 2900000, clients: 7 },
+  { month: 'Sep', projects: 7, revenue: 3500000, clients: 9 },
+  { month: 'Oct', projects: 9, revenue: 4100000, clients: 10 },
+  { month: 'Nov', projects: 4, revenue: 1900000, clients: 5 },
+  { month: 'Dec', projects: 6, revenue: 3100000, clients: 8 },
+];
+
+// TODO: Backend API does not provide project category breakdowns.
+// Replace with real data from GET /dashboard/chart-data when available.
+const projectStats = [
+  { category: 'سكني', count: 52, percentage: 33 },
+  { category: 'تجاري', count: 38, percentage: 24 },
+  { category: 'صناعي', count: 25, percentage: 16 },
+  { category: 'بنية تحتية', count: 22, percentage: 14 },
+  { category: 'ترميم', count: 19, percentage: 13 },
+];
+
+// TODO: Backend API does not provide per-service booking/revenue stats.
+// Replace with real data from GET /dashboard/chart-data when available.
+const serviceStats = [
+  { name: 'بناء سكني', bookings: 45, revenue: '18,500,000 SAR', growth: 12 },
+  { name: 'تشطيب داخلي', bookings: 38, revenue: '8,200,000 SAR', growth: 8 },
+  { name: 'مشروع تجاري', bookings: 28, revenue: '14,800,000 SAR', growth: 15 },
+  { name: 'تصميم معماري', bookings: 22, revenue: '3,600,000 SAR', growth: 5 },
+  { name: 'صيانة وتشغيل', bookings: 18, revenue: '5,300,000 SAR', growth: -3 },
+  { name: 'بنية تحتية', bookings: 15, revenue: '9,000,000 SAR', growth: 10 },
+];
+
+// TODO: Backend API does not provide per-status quote breakdowns.
+// Replace with real data from GET /dashboard/chart-data when available.
+const quoteStats = [
+  { status: 'pending', count: 12 },
+  { status: 'reviewed', count: 8 },
+  { status: 'inProgress', count: 15 },
+  { status: 'completed', count: 42 },
+  { status: 'rejected', count: 6 },
+];
+
+// TODO: Backend API does not provide monthly contact message stats.
+// Replace with real data from GET /dashboard/chart-data when available.
+const contactStats = [
+  { month: 'Jan', received: 18, replied: 15 },
+  { month: 'Feb', received: 22, replied: 19 },
+  { month: 'Mar', received: 15, replied: 14 },
+  { month: 'Apr', received: 28, replied: 24 },
+  { month: 'May', received: 20, replied: 18 },
+  { month: 'Jun', received: 32, replied: 28 },
+  { month: 'Jul', received: 25, replied: 22 },
+  { month: 'Aug', received: 19, replied: 17 },
+  { month: 'Sep', received: 27, replied: 25 },
+  { month: 'Oct', received: 30, replied: 26 },
+  { month: 'Nov', received: 22, replied: 20 },
+  { month: 'Dec', received: 35, replied: 31 },
+];
 
 export function ReportsDashboard() {
   const { t } = useTranslation();
+  const { data: stats, isLoading, error } = useDashboardStats();
   const [dateRange, setDateRange] = useState('year');
 
   const KpiCard = ({ icon: Icon, label, value, trend, trendUp, color }: { icon: any; label: string; value: string; trend?: string; trendUp?: boolean; color: string }) => (
@@ -80,17 +149,17 @@ export function ReportsDashboard() {
           <p className="text-muted-foreground mt-1">{t('dashboard.reports.pageDescription')}</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-              className="h-10 pl-10 pr-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none">
-              <option value="week">{t('dashboard.reports.thisWeek')}</option>
-              <option value="month">{t('dashboard.reports.thisMonth')}</option>
-              <option value="quarter">{t('dashboard.reports.thisQuarter')}</option>
-              <option value="year">{t('dashboard.reports.thisYear')}</option>
-              <option value="custom">{t('dashboard.reports.custom')}</option>
-            </select>
-          </div>
+          <Dropdown
+            value={dateRange}
+            onChange={(val) => setDateRange(val)}
+            options={[
+              { value: 'week', label: t('dashboard.reports.thisWeek') },
+              { value: 'month', label: t('dashboard.reports.thisMonth') },
+              { value: 'quarter', label: t('dashboard.reports.thisQuarter') },
+              { value: 'year', label: t('dashboard.reports.thisYear') },
+              { value: 'custom', label: t('dashboard.reports.custom') },
+            ]}
+          />
           <button className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <Download className="h-4 w-4" />{t('dashboard.reports.export')}
           </button>
@@ -101,19 +170,26 @@ export function ReportsDashboard() {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard icon={Building2} label={t('dashboard.reports.totalProjects')} value={String(kpiData.totalProjects)} trend="+12%" trendUp color={typeColors.building} />
-        <KpiCard icon={DollarSign} label={t('dashboard.reports.totalRevenue')} value={kpiData.totalRevenue} trend="+8.5%" trendUp color={typeColors.dollar} />
-        <KpiCard icon={Users} label={t('dashboard.reports.teamMembers')} value={String(kpiData.teamMembers)} trend="+5" trendUp color={typeColors.users} />
-        <KpiCard icon={FileSpreadsheet} label={t('dashboard.reports.pendingQuotes')} value={String(kpiData.pendingQuotes)} trend="-3" trendUp={false} color={typeColors.file} />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard icon={Building2} label={t('dashboard.reports.activeProjects')} value={String(kpiData.activeProjects)} color={typeColors.building} />
-        <KpiCard icon={DollarSign} label={t('dashboard.reports.monthlyRevenue')} value={kpiData.monthlyRevenue} color={typeColors.dollar} />
-        <KpiCard icon={Briefcase} label={t('dashboard.reports.activeClients')} value={String(kpiData.activeClients)} color={typeColors.briefcase} />
-        <KpiCard icon={Mail} label={t('dashboard.reports.contactMessages')} value={String(contactStats.reduce((s, m) => s + m.received, 0))} color={typeColors.mail} />
-      </div>
+      {isLoading ? (
+        <CardSkeleton count={8} />
+      ) : error ? (
+        <ErrorState message={t('common.error')} onRetry={() => window.location.reload()} />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard icon={Building2} label={t('dashboard.reports.totalProjects')} value={String(stats?.overview.totalProjects ?? 0)} color={typeColors.building} />
+            <KpiCard icon={HardHat} label={t('dashboard.reports.activeServices')} value={String(stats?.overview.totalServices ?? 0)} color={typeColors.building} />
+            <KpiCard icon={Users} label={t('dashboard.reports.teamMembers')} value={String(stats?.overview.totalTeamMembers ?? 0)} color={typeColors.users} />
+            <KpiCard icon={FileSpreadsheet} label={t('dashboard.reports.totalBlogPosts')} value={String(stats?.overview.totalBlogPosts ?? 0)} color={typeColors.file} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard icon={MessageSquare} label={t('dashboard.reports.totalTestimonials')} value={String(stats?.overview.totalTestimonials ?? 0)} color={typeColors.briefcase} />
+            <KpiCard icon={Mail} label={t('dashboard.reports.contactMessages')} value={String(stats?.overview.totalContactMessages ?? 0)} color={typeColors.mail} />
+            <KpiCard icon={FileSpreadsheet} label={t('dashboard.reports.pendingQuotes')} value={String(stats?.overview.totalQuoteRequests ?? 0)} color={typeColors.file} />
+            <KpiCard icon={Users} label={t('dashboard.reports.subscribers')} value={String(stats?.overview.totalNewsletterSubscribers ?? 0)} color={typeColors.users} />
+          </div>
+        </>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>

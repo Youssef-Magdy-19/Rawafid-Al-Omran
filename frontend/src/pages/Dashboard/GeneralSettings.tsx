@@ -6,15 +6,55 @@ import {
   ArrowLeft, Save, RotateCcw, Globe, Palette, Layout, Search, Share2,
   BarChart3, HardDrive, Mail, Lock, ToggleLeft, Wrench, Image,
 } from 'lucide-react';
-import { mockGeneralSettings } from '@data/adminMockData';
+import { Dropdown } from '@components/ui/Dropdown';
+// TODO: Backend API does not provide a settings endpoint.
+// Replace with real data from a GET/PUT /settings endpoint when available.
+const settingsDefaults = {
+  websiteName: 'Rawafid Al Omran',
+  websiteUrl: 'https://www.rawafid-alomran.com',
+  defaultLanguage: 'ar',
+  rtlSupport: true,
+  themeMode: 'light',
+  themeColor: '#1e40af',
+  homepageLayout: 'default',
+  projectsPerPage: 12,
+  enableBlog: true,
+  enableCareers: true,
+  enableQuote: true,
+  metaTitle: 'Rawafid Al Omran General Contracting',
+  metaDescription: 'Rawafid Al Omran is a leading general contracting company in Saudi Arabia, providing construction, engineering, and project management services since 1998.',
+  metaKeywords: 'contracting, construction, engineering, Saudi Arabia, Rawafid Al Omran',
+  ogTitle: 'Rawafid Al Omran General Contracting',
+  ogDescription: 'Your trusted partner in construction and engineering since 1998',
+  ogImage: '/images/og-default.jpg',
+  gaId: 'G-XXXXXXXXXX',
+  googleTagManager: 'GTM-XXXXXXX',
+  facebookPixel: 'XXXXXXXXXXXXXXXX',
+  maintenanceMode: false,
+  maintenanceMessage: 'We are currently performing scheduled maintenance. Please check back soon.',
+  cacheEnabled: true,
+  cacheDuration: 3600,
+  maxFileSize: 10,
+  allowedFileTypes: 'jpg,jpeg,png,gif,webp,pdf,doc,docx',
+  smtpHost: 'smtp.rawafid-alomran.com',
+  smtpPort: 587,
+  smtpEmail: 'noreply@rawafid-alomran.com',
+  smtpEncryption: 'tls',
+  recaptchaSiteKey: '6LcXXXXXXXXXXXXXX',
+  recaptchaSecretKey: 'XXXXXXXXXXXXXXXXXXXXXXXXXX',
+  twoFactorAuth: true,
+  sessionTimeout: 60,
+  autoSave: true,
+  toastNotifications: true,
+};
 
 export function GeneralSettings() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ ...mockGeneralSettings });
+  const [form, setForm] = useState({ ...settingsDefaults });
 
   const update = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
-  const reset = () => setForm({ ...mockGeneralSettings });
+  const reset = () => setForm({ ...settingsDefaults });
 
   const SectionCard = ({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) => (
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -44,7 +84,6 @@ export function GeneralSettings() {
   );
 
   const inputCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring';
-  const selectCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
 
   return (
     <div className="space-y-6">
@@ -86,10 +125,14 @@ export function GeneralSettings() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
           <SectionCard icon={Palette} title={t('dashboard.generalSettings.language')}>
             <FieldRow label={t('dashboard.generalSettings.defaultLanguage')}>
-              <select value={form.defaultLanguage} onChange={(e) => update('defaultLanguage', e.target.value)} className={selectCls}>
-                <option value="ar">{t('dashboard.generalSettings.arabic')}</option>
-                <option value="en">{t('dashboard.generalSettings.english')}</option>
-              </select>
+              <Dropdown
+                value={form.defaultLanguage}
+                onChange={(val) => update('defaultLanguage', val)}
+                options={[
+                  { value: 'ar', label: t('dashboard.generalSettings.arabic') },
+                  { value: 'en', label: t('dashboard.generalSettings.english') },
+                ]}
+              />
             </FieldRow>
             <FieldRow label={t('dashboard.generalSettings.rtlSupport')}>
               <Switch checked={form.rtlSupport} onChange={(v) => update('rtlSupport', v)} />
@@ -100,11 +143,15 @@ export function GeneralSettings() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}>
           <SectionCard icon={Palette} title={t('dashboard.generalSettings.theme')}>
             <FieldRow label={t('dashboard.generalSettings.themeMode')}>
-              <select value={form.themeMode} onChange={(e) => update('themeMode', e.target.value)} className={selectCls}>
-                <option value="light">{t('dashboard.generalSettings.light')}</option>
-                <option value="dark">{t('dashboard.generalSettings.dark')}</option>
-                <option value="auto">{t('dashboard.generalSettings.auto')}</option>
-              </select>
+              <Dropdown
+                value={form.themeMode}
+                onChange={(val) => update('themeMode', val)}
+                options={[
+                  { value: 'light', label: t('dashboard.generalSettings.light') },
+                  { value: 'dark', label: t('dashboard.generalSettings.dark') },
+                  { value: 'auto', label: t('dashboard.generalSettings.auto') },
+                ]}
+              />
             </FieldRow>
             <FieldRow label={t('dashboard.generalSettings.themeColor')}>
               <div className="flex items-center gap-3">
@@ -119,11 +166,15 @@ export function GeneralSettings() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
           <SectionCard icon={Layout} title={t('dashboard.generalSettings.homepage')}>
             <FieldRow label={t('dashboard.generalSettings.homepageLayout')}>
-              <select value={form.homepageLayout} onChange={(e) => update('homepageLayout', e.target.value)} className={selectCls}>
-                <option value="default">{t('dashboard.generalSettings.default')}</option>
-                <option value="modern">{t('dashboard.generalSettings.modern')}</option>
-                <option value="classic">{t('dashboard.generalSettings.classic')}</option>
-              </select>
+              <Dropdown
+                value={form.homepageLayout}
+                onChange={(val) => update('homepageLayout', val)}
+                options={[
+                  { value: 'default', label: t('dashboard.generalSettings.default') },
+                  { value: 'modern', label: t('dashboard.generalSettings.modern') },
+                  { value: 'classic', label: t('dashboard.generalSettings.classic') },
+                ]}
+              />
             </FieldRow>
             <FieldRow label={t('dashboard.generalSettings.projectsPerPage')}>
               <input type="number" value={form.projectsPerPage} onChange={(e) => update('projectsPerPage', Number(e.target.value))} className={inputCls} />
@@ -217,7 +268,7 @@ export function GeneralSettings() {
             <FieldRow label={t('dashboard.generalSettings.maxFileSize')}>
               <div className="flex items-center gap-3">
                 <input type="number" value={form.maxFileSize} onChange={(e) => update('maxFileSize', Number(e.target.value))} className={inputCls} />
-                <span className="text-sm text-muted-foreground">MB</span>
+                <span className="text-sm text-muted-foreground">{t('dashboard.generalSettings.megabytes')}</span>
               </div>
             </FieldRow>
             <FieldRow label={t('dashboard.generalSettings.allowedFileTypes')}>
@@ -238,11 +289,15 @@ export function GeneralSettings() {
               <input type="email" value={form.smtpEmail} onChange={(e) => update('smtpEmail', e.target.value)} className={inputCls} />
             </FieldRow>
             <FieldRow label={t('dashboard.generalSettings.smtpEncryption')}>
-              <select value={form.smtpEncryption} onChange={(e) => update('smtpEncryption', e.target.value)} className={selectCls}>
-                <option value="tls">TLS</option>
-                <option value="ssl">SSL</option>
-                <option value="none">{t('dashboard.generalSettings.none')}</option>
-              </select>
+              <Dropdown
+                value={form.smtpEncryption}
+                onChange={(val) => update('smtpEncryption', val)}
+                options={[
+                  { value: 'tls', label: t('dashboard.generalSettings.tls') },
+                  { value: 'ssl', label: t('dashboard.generalSettings.ssl') },
+                  { value: 'none', label: t('dashboard.generalSettings.none') },
+                ]}
+              />
             </FieldRow>
           </SectionCard>
         </motion.div>

@@ -6,35 +6,44 @@ import { Eye, EyeOff, Loader2, Plane, Globe } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
 import { useTheme } from '@providers/ThemeProvider';
 import { useLanguage } from '@providers/LanguageProvider';
+import { useAuthStore } from '@store/authStore';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function DashboardLogin() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { toggleLanguage } = useLanguage();
+  const login = useAuthStore((state) => state.login);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [error, setError] = useState('');
 
+  const emailError = emailTouched && !email ? t('dashboard.login.emailRequired') : emailTouched && !EMAIL_REGEX.test(email) ? t('dashboard.login.emailInvalid') : '';
+  const passwordError = passwordTouched && !password ? t('dashboard.login.passwordRequired') : '';
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setEmailTouched(true);
+    setPasswordTouched(true);
 
-    if (!email || !password) {
-      setError(t('common.required'));
-      return;
-    }
+    if (!email || !password || !EMAIL_REGEX.test(email)) return;
 
     setIsLoading(true);
 
-    // Simulate login
-    setTimeout(() => {
+    try {
+      await login(email, password);
+      navigate(ROUTES.DASHBOARD_HOME, { replace: true });
+    } catch {
+      setError(t('dashboard.login.authError'));
+    } finally {
       setIsLoading(false);
-      navigate(ROUTES.DASHBOARD_HOME);
-    }, 1500);
+    }
   };
 
   return (
@@ -182,22 +191,31 @@ export function DashboardLogin() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
+              <label htmlFor="email" className="mb-2 block text-sm font-semibold text-foreground">
                 {t('dashboard.login.emailLabel')}
               </label>
               <input
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                onBlur={() => setEmailTouched(true)}
                 placeholder={t('dashboard.login.emailPlaceholder')}
-                className="flex h-12 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all"
+                className={`flex h-12 w-full rounded-xl border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground/50 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:shadow-md hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  emailError ? 'border-destructive focus:ring-destructive/30 focus:border-destructive' : 'border-input'
+                }`}
                 autoComplete="email"
+                disabled={isLoading}
               />
+              {emailError && (
+                <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-xs font-medium text-destructive">
+                  {emailError}
+                </motion.p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
+              <label htmlFor="password" className="mb-2 block text-sm font-semibold text-foreground">
                 {t('dashboard.login.passwordLabel')}
               </label>
               <div className="relative">
@@ -205,19 +223,29 @@ export function DashboardLogin() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                  onBlur={() => setPasswordTouched(true)}
                   placeholder={t('dashboard.login.passwordPlaceholder')}
-                  className="flex h-12 w-full rounded-xl border border-input bg-background px-4 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all"
+                  className={`flex h-12 w-full rounded-xl border bg-background px-4 pr-12 text-sm text-foreground placeholder:text-muted-foreground/50 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:shadow-md hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    passwordError ? 'border-destructive focus:ring-destructive/30 focus:border-destructive' : 'border-input'
+                  }`}
                   autoComplete="current-password"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {passwordError && (
+                <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-xs font-medium text-destructive">
+                  {passwordError}
+                </motion.p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">

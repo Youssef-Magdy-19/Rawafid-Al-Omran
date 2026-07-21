@@ -5,13 +5,29 @@ import {
   ArrowLeft, User, Mail, Phone, Shield, Calendar, Clock, Link,
   Edit3, Lock, CheckCircle, XCircle,
 } from 'lucide-react';
-import { mockAdminProfile } from '@data/adminMockData';
+// TODO: Backend API does not provide an admin profile endpoint.
+// Replace with real data from GET /users/me/profile when endpoint is available.
+const profile = {
+  profileImage: '/images/admin-avatar.jpg',
+  nameAr: 'م. عبدالله السالم',
+  nameEn: 'Eng. Abdullah Al Salem',
+  email: 'abdullah@rawafid-alomran.com',
+  phone: '+966 50 111 2222',
+  role: 'admin',
+  lastLogin: '2024-07-18 09:30 AM',
+  accountStatus: 'active' as const,
+  joinedDate: '2018-03-01',
+  biographyAr: 'مهندس مدني بخبرة تزيد عن 15 عاماً في مجال إدارة المشاريع الإنشائية. حاصل على ماجستير في إدارة المشاريع من جامعة الملك سعود. قاد العديد من المشاريع الكبرى في المملكة.',
+  biographyEn: 'Civil engineer with over 15 years of experience in construction project management. Holds a Master\'s degree in Project Management from King Saud University. Led numerous major projects across the kingdom.',
+  socialLinks: [
+    { platform: 'linkedin', url: 'https://linkedin.com/in/abdullah' },
+    { platform: 'twitter', url: 'https://twitter.com/abdullah' },
+  ],
+};
 
 export function AdminProfile() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-
-  const profile = mockAdminProfile;
 
   const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: string }) => (
     <div className="flex items-start gap-3">

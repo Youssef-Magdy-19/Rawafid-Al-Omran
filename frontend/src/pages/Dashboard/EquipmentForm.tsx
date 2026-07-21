@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Upload,
   X,
-  ImagePlus,
   CheckCircle2,
   AlertTriangle,
   Ban,
 } from 'lucide-react';
+import { ImageUpload, Dropdown } from '@components/ui';
 import { type EquipmentItem, equipmentCategoryLabels, operatingStatusLabels, projectOptions } from '@data/equipmentMockData';
+import type { ApiFieldErrors } from '@utils/api';
 
 export interface EquipmentFormData {
   nameAr: string;
@@ -42,9 +42,10 @@ interface EquipmentFormProps {
   initialData?: EquipmentItem;
   onSubmit: (data: EquipmentFormData) => void;
   isSubmitting: boolean;
+  serverErrors?: ApiFieldErrors;
 }
 
-export function EquipmentForm({ initialData, onSubmit, isSubmitting }: EquipmentFormProps) {
+export function EquipmentForm({ initialData, onSubmit, isSubmitting, serverErrors = {} }: EquipmentFormProps) {
   const { t, i18n } = useTranslation();
 
   const [form, setForm] = useState<EquipmentFormData>({
@@ -77,6 +78,12 @@ export function EquipmentForm({ initialData, onSubmit, isSubmitting }: Equipment
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    if (Object.keys(serverErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...serverErrors }));
+    }
+  }, [serverErrors]);
+
   const updateField = (field: keyof EquipmentFormData, value: string | boolean | number | string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -103,16 +110,6 @@ export function EquipmentForm({ initialData, onSubmit, isSubmitting }: Equipment
     if (validate()) {
       onSubmit(form);
     }
-  };
-
-  const handleCoverUpload = () => {
-    const url = prompt(t('dashboard.addEquipment.coverImageDescription') || 'Enter image URL:');
-    if (url) updateField('coverImage', url);
-  };
-
-  const handleGalleryUpload = () => {
-    const url = prompt('Enter image URL for gallery:');
-    if (url) updateField('galleryImages', [...form.galleryImages, url]);
   };
 
   const removeGalleryImage = (index: number) => {
@@ -190,20 +187,16 @@ export function EquipmentForm({ initialData, onSubmit, isSubmitting }: Equipment
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              {t('dashboard.addEquipment.category')} <span className="text-destructive">*</span>
-            </label>
-            <select
+            <Dropdown
+              label={t('dashboard.addEquipment.category')}
               value={form.category}
-              onChange={(e) => updateField('category', e.target.value)}
-              className={fieldClass('category')}
-            >
-              <option value="">{t('dashboard.addEquipment.categoryPlaceholder')}</option>
-              {categoryOptions.map(([key]) => (
-                <option key={key} value={key}>{t(`dashboard.equipmentDetails.${key}` as any)}</option>
-              ))}
-            </select>
-            {errors.category && <p className="mt-1 text-xs text-destructive">{errors.category}</p>}
+              onChange={(val) => updateField('category', val)}
+              placeholder={t('dashboard.addEquipment.categoryPlaceholder')}
+              options={categoryOptions.map(([key]) => ({ value: key, label: t(`dashboard.equipmentDetails.${key}` as any) }))}
+              className="w-full"
+              error={errors.category}
+              required
+            />
           </div>
 
           <div>
@@ -349,21 +342,14 @@ export function EquipmentForm({ initialData, onSubmit, isSubmitting }: Equipment
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              {t('dashboard.addEquipment.assignedProject')}
-            </label>
-            <select
+            <Dropdown
+              label={t('dashboard.addEquipment.assignedProject')}
               value={form.assignedProject}
-              onChange={(e) => updateField('assignedProject', e.target.value)}
-              className={fieldClass('assignedProject')}
-            >
-              <option value="">{t('dashboard.addEquipment.assignedProjectPlaceholder')}</option>
-              {projectOptions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {i18n.language === 'ar' ? p.nameAr : p.nameEn}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => updateField('assignedProject', val)}
+              placeholder={t('dashboard.addEquipment.assignedProjectPlaceholder')}
+              options={projectOptions.map((p) => ({ value: p.id, label: i18n.language === 'ar' ? p.nameAr : p.nameEn }))}
+              className="w-full"
+            />
           </div>
 
           <div>
@@ -397,29 +383,11 @@ export function EquipmentForm({ initialData, onSubmit, isSubmitting }: Equipment
         <h3 className="text-lg font-semibold text-foreground">{t('dashboard.addEquipment.coverImage')}</h3>
         <p className="text-xs text-muted-foreground -mt-4">{t('dashboard.addEquipment.coverImageDescription')}</p>
 
-        <div className="flex items-center gap-4">
-          {form.coverImage ? (
-            <div className="relative group">
-              <img src={form.coverImage} alt="Cover" className="h-32 w-48 rounded-lg object-cover border border-border" />
-              <button
-                type="button"
-                onClick={() => updateField('coverImage', '')}
-                className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleCoverUpload}
-              className="flex flex-col items-center justify-center h-32 w-48 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-            >
-              <Upload className="h-6 w-6 mb-1" />
-              <span className="text-xs font-medium">{t('dashboard.addEquipment.uploadImage')}</span>
-            </button>
-          )}
-        </div>
+        <ImageUpload
+          value={form.coverImage}
+          onChange={(url) => updateField('coverImage', url)}
+          label={t('dashboard.addEquipment.coverImage')}
+        />
       </div>
 
       <div className="rounded-xl border border-border bg-card shadow-sm p-6 space-y-6">
@@ -439,14 +407,12 @@ export function EquipmentForm({ initialData, onSubmit, isSubmitting }: Equipment
               </button>
             </div>
           ))}
-          <button
-            type="button"
-            onClick={handleGalleryUpload}
-            className="flex flex-col items-center justify-center h-24 w-24 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-          >
-            <ImagePlus className="h-5 w-5 mb-1" />
-            <span className="text-[10px] font-medium">{t('dashboard.addEquipment.addImages')}</span>
-          </button>
+          <div className="h-24 w-24">
+            <ImageUpload
+              value=""
+              onChange={(url) => { if (url) updateField('galleryImages', [...form.galleryImages, url]); }}
+            />
+          </div>
         </div>
       </div>
 

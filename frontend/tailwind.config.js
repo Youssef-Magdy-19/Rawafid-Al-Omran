@@ -94,6 +94,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         heading: ['Cairo', 'system-ui', 'sans-serif'],
+        arabic: ['Amiri', 'serif'],
       },
       spacing: {
         '18': '4.5rem',

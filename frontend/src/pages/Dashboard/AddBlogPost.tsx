@@ -2,39 +2,49 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
-import { BlogForm, type BlogFormData } from './BlogForm';
+import { useCreateBlog } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { parseApiFieldErrors } from '@utils/api';
+import { BlogForm } from './BlogForm';
 
 export function AddBlogPost() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createBlog = useCreateBlog();
+  const { addToast } = useToast();
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (_data: BlogFormData) => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      navigate(ROUTES.DASHBOARD_BLOG);
-    }, 1000);
+  const handleSubmit = (data: Record<string, unknown>) => {
+    setServerErrors({});
+    createBlog.mutate(data, {
+      onSuccess: () => {
+        addToast(t('dashboard.addBlogPost.createdSuccess'), 'success');
+        navigate(ROUTES.DASHBOARD_BLOG);
+      },
+      onError: (error) => {
+        const parsed = parseApiFieldErrors(error);
+        setServerErrors(parsed);
+        if (!Object.keys(parsed).length) {
+          addToast(t('common.error'), 'error');
+        }
+      },
+    });
   };
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <button onClick={() => navigate(ROUTES.DASHBOARD_BLOG)}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+          <ArrowLeft className="h-4 w-4" />{t('dashboard.blog.pageTitle')}
+        </button>
         <h1 className="text-2xl font-bold text-foreground">{t('dashboard.addBlogPost.pageTitle')}</h1>
         <p className="text-muted-foreground mt-1">{t('dashboard.addBlogPost.pageDescription')}</p>
       </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
-        <BlogForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
+        <BlogForm onSubmit={handleSubmit} isSubmitting={createBlog.isPending} serverErrors={serverErrors} />
       </motion.div>
     </div>
   );

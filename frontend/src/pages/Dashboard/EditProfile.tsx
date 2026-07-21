@@ -5,22 +5,27 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Save, User, Upload, Link,
 } from 'lucide-react';
-import { mockAdminProfile } from '@data/adminMockData';
+// TODO: Backend API does not provide a profile update endpoint.
+// Replace with real data from GET/PUT /users/me/profile when available.
+const defaultProfile = {
+  nameAr: 'م. عبدالله السالم',
+  nameEn: 'Eng. Abdullah Al Salem',
+  email: 'abdullah@rawafid-alomran.com',
+  phone: '+966 50 111 2222',
+  biographyAr: 'مهندس مدني بخبرة تزيد عن 15 عاماً في مجال إدارة المشاريع الإنشائية. حاصل على ماجستير في إدارة المشاريع من جامعة الملك سعود. قاد العديد من المشاريع الكبرى في المملكة.',
+  biographyEn: 'Civil engineer with over 15 years of experience in construction project management. Holds a Master\'s degree in Project Management from King Saud University. Led numerous major projects across the kingdom.',
+  profileImage: '/images/admin-avatar.jpg',
+  socialLinks: [
+    { platform: 'linkedin', url: 'https://linkedin.com/in/abdullah' },
+    { platform: 'twitter', url: 'https://twitter.com/abdullah' },
+  ],
+};
 
 export function EditProfile() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    nameAr: mockAdminProfile.nameAr,
-    nameEn: mockAdminProfile.nameEn,
-    email: mockAdminProfile.email,
-    phone: mockAdminProfile.phone,
-    biographyAr: mockAdminProfile.biographyAr,
-    biographyEn: mockAdminProfile.biographyEn,
-    profileImage: mockAdminProfile.profileImage,
-    socialLinks: [...mockAdminProfile.socialLinks],
-  });
+  const [form, setForm] = useState({ ...defaultProfile });
 
   const update = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
   const updateSocial = (idx: number, field: 'platform' | 'url', value: string) => {

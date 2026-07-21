@@ -4,20 +4,33 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@constants/route.constants';
-import { ProjectForm, type ProjectFormData } from './ProjectForm';
+import { useCreateProject } from '@hooks/dashboard';
+import { useToast } from '@providers/ToastProvider';
+import { parseApiFieldErrors } from '@utils/api';
+import { ProjectForm } from './ProjectForm';
 
 export function AddProject() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createProject = useCreateProject();
+  const { addToast } = useToast();
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (_data: ProjectFormData) => {
-    setIsSubmitting(true);
-    // Temporary UI - no backend
-    setTimeout(() => {
-      setIsSubmitting(false);
-      navigate(ROUTES.DASHBOARD_PROJECTS);
-    }, 1000);
+  const handleSubmit = (data: Record<string, unknown>) => {
+    setServerErrors({});
+    createProject.mutate(data, {
+      onSuccess: () => {
+        addToast(t('dashboard.addProject.createdSuccess'), 'success');
+        navigate(ROUTES.DASHBOARD_PROJECTS);
+      },
+      onError: (error) => {
+        const parsed = parseApiFieldErrors(error);
+        setServerErrors(parsed);
+        if (!Object.keys(parsed).length) {
+          addToast(t('common.error'), 'error');
+        }
+      },
+    });
   };
 
   return (
@@ -43,7 +56,7 @@ export function AddProject() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
       >
-        <ProjectForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+        <ProjectForm onSubmit={handleSubmit} isSubmitting={createProject.isPending} serverErrors={serverErrors} />
       </motion.div>
     </div>
   );
