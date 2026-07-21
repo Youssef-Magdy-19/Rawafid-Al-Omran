@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middlewares/auth.middleware.js';
-import { uploadSingleFile, uploadFileToCloudinary } from '../middlewares/upload.middleware.js';
+import { uploadSingleFile, uploadBufferToCloudinary } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
@@ -13,18 +13,20 @@ router.post(
       next();
     });
   },
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.file) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'No file provided',
         });
+        return;
       }
 
-      const result = await uploadFileToCloudinary(req.file.path, 'rawafid-omran');
+      // Use buffer for Vercel serverless compatibility
+      const result = await uploadBufferToCloudinary(req.file.buffer, 'rawafid-omran');
 
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
         data: {
           url: result.secure_url,

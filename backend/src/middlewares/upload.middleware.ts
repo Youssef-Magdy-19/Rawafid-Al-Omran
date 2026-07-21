@@ -1,29 +1,12 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { Request } from 'express';
-import { uploadSingleImage as cloudinaryUpload, deleteImage } from '../services/fileUpload.service.js';
+import { uploadBuffer, deleteImage } from '../services/fileUpload.service.js';
 import config from '../config/index.js';
 
-// Ensure upload directory exists
-const uploadDir = config.upload.folder;
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Use memory storage for Vercel serverless compatibility
+const storage = multer.memoryStorage();
 
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (_req: Request, _file: Express.Multer.File, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (_req: Request, file: Express.Multer.File, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  }
-});
-
-// File filter
+// File filter - images only for dashboard
 const fileFilter = (
   _req: Request,
   file: Express.Multer.File,
@@ -34,10 +17,7 @@ const fileFilter = (
     'image/png',
     'image/gif',
     'image/webp',
-    'image/svg+xml',
-    'application/pdf',
-    'video/mp4',
-    'video/webm'
+    'image/svg+xml'
   ];
 
   if (allowedMimes.includes(file.mimetype)) {
@@ -56,12 +36,12 @@ export const upload = multer({
   }
 });
 
-// Helper function to upload file to Cloudinary
-export const uploadFileToCloudinary = async (
-  filePath: string,
+// Helper function to upload buffer to Cloudinary
+export const uploadBufferToCloudinary = async (
+  buffer: Buffer,
   folder: string = 'rawafid-omran'
 ) => {
-  return cloudinaryUpload(filePath, folder);
+  return uploadBuffer(buffer, folder);
 };
 
 // Helper function to delete file from Cloudinary
@@ -94,6 +74,6 @@ export default {
   uploadSingleImage,
   uploadMultipleImages,
   uploadSingleFile,
-  uploadFileToCloudinary,
+  uploadBufferToCloudinary,
   deleteFileFromCloudinary
 };

@@ -36,7 +36,7 @@ const defaultOptimization: ImageOptimizationOptions = {
 };
 
 /**
- * Upload a single image to Cloudinary
+ * Upload a single image to Cloudinary (from file path - for local development)
  */
 export const uploadSingleImage = async (
   filePath: string,
@@ -71,6 +71,52 @@ export const uploadSingleImage = async (
     bytes: result.bytes,
     created_at: result.created_at
   };
+};
+
+/**
+ * Upload a buffer directly to Cloudinary (for Vercel serverless)
+ */
+export const uploadBuffer = async (
+  buffer: Buffer,
+  folder: string = 'rawafid-omran',
+  options: ImageOptimizationOptions = {}
+): Promise<CloudinaryUploadResult> => {
+  const mergedOptions = { ...defaultOptimization, ...options };
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'image',
+        transformation: [
+          { quality: mergedOptions.quality },
+          { fetch_format: 'auto' },
+          ...(mergedOptions.width ? [{ width: mergedOptions.width }] : []),
+          ...(mergedOptions.height ? [{ height: mergedOptions.height }] : []),
+          ...(mergedOptions.crop ? [{ crop: mergedOptions.crop }] : [])
+        ]
+      },
+      (error, result) => {
+        if (error) {
+          logger.error('Buffer upload to Cloudinary failed', { error });
+          reject(error);
+        } else if (result) {
+          logger.info('Buffer uploaded to Cloudinary', { publicId: result.public_id });
+          resolve({
+            public_id: result.public_id,
+            secure_url: result.secure_url,
+            format: result.format,
+            width: result.width,
+            height: result.height,
+            bytes: result.bytes,
+            created_at: result.created_at
+          });
+        }
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
 };
 
 /**
@@ -230,6 +276,7 @@ export const verifyCloudinaryConnection = async (): Promise<boolean> => {
 
 export default {
   uploadSingleImage,
+  uploadBuffer,
   uploadGallery,
   deleteImage,
   deleteMultipleImages,
