@@ -14,8 +14,10 @@ const adminCards = [
 ];
 
 export function Administration() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+
+  const isRTL = i18n.language === 'ar'
 
   return (
     <div className="space-y-6">
@@ -31,7 +33,7 @@ export function Administration() {
         {adminCards.map((card, idx) => (
           <motion.button key={card.key} onClick={() => navigate(card.path)}
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: idx * 0.1 }}
-            className="rounded-xl border border-border bg-card shadow-sm p-6 text-left hover:shadow-md hover:border-primary/20 transition-all group">
+            className={`${isRTL && 'text-start'} rounded-xl border border-border bg-card shadow-sm p-6 text-left hover:shadow-md hover:border-primary/20 transition-all group`}>
             <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl border ${card.color} mb-4`}>
               <card.icon className="h-6 w-6" />
             </div>

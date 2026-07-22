@@ -91,12 +91,17 @@ export const uploadBuffer = async (
   const mergedOptions = { ...defaultOptimization, ...options };
 
   // Validate Cloudinary configuration
-  if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
+  if (
+    !config.cloudinary.cloudName ||
+    !config.cloudinary.apiKey ||
+    !config.cloudinary.apiSecret
+  ) {
     logger.error('Cloudinary configuration missing', {
       hasCloudName: !!config.cloudinary.cloudName,
       hasApiKey: !!config.cloudinary.apiKey,
       hasApiSecret: !!config.cloudinary.apiSecret
     });
+
     throw new Error('Cloudinary is not properly configured');
   }
 
@@ -113,24 +118,35 @@ export const uploadBuffer = async (
         transformation: [
           { quality: mergedOptions.quality },
           { fetch_format: 'auto' },
-          ...(mergedOptions.width ? [{ width: mergedOptions.width }] : []),
-          ...(mergedOptions.height ? [{ height: mergedOptions.height }] : []),
-          ...(mergedOptions.crop ? [{ crop: mergedOptions.crop }] : [])
+          ...(mergedOptions.width
+            ? [{ width: mergedOptions.width }]
+            : []),
+          ...(mergedOptions.height
+            ? [{ height: mergedOptions.height }]
+            : []),
+          ...(mergedOptions.crop
+            ? [{ crop: mergedOptions.crop }]
+            : [])
         ]
       },
       (error, result) => {
         if (error) {
           logger.error('Cloudinary upload_stream error', {
-            error: error.message,
-            errorName: error.name,
+            message: error.message,
+            name: error.name,
+            httpCode: (error as any).http_code,
+            httpHeaders: (error as any).http_headers,
+            error: error,
             folder
           });
+
           reject(error);
         } else if (result) {
           logger.info('Buffer uploaded to Cloudinary', {
             publicId: result.public_id,
             secureUrl: result.secure_url
           });
+
           resolve({
             public_id: result.public_id,
             secure_url: result.secure_url,
@@ -142,7 +158,10 @@ export const uploadBuffer = async (
           });
         } else {
           logger.error('Cloudinary returned no result');
-          reject(new Error('Cloudinary upload failed: no result returned'));
+
+          reject(
+            new Error('Cloudinary upload failed: no result returned')
+          );
         }
       }
     );
