@@ -14,7 +14,9 @@ cloudinary.config({
 logger.info('Cloudinary configuration', {
   hasCloudName: !!config.cloudinary.cloudName,
   hasApiKey: !!config.cloudinary.apiKey,
-  hasApiSecret: !!config.cloudinary.apiSecret
+  hasApiSecret: !!config.cloudinary.apiSecret,
+  cloudNameLength: config.cloudinary.cloudName?.length || 0,
+  apiKeyLength: config.cloudinary.apiKey?.length || 0
 });
 
 export interface CloudinaryUploadResult {
@@ -82,7 +84,7 @@ export const uploadSingleImage = async (
 
 /**
  * Upload a buffer directly to Cloudinary (for Vercel serverless)
- * Tests minimal configuration first, then adds transformations
+ * Uses authenticated upload_stream with comprehensive error handling
  */
 export const uploadBuffer = async (
   buffer: Buffer,
@@ -103,12 +105,15 @@ export const uploadBuffer = async (
       hasApiSecret: !!config.cloudinary.apiSecret
     });
 
-    throw new Error('Cloudinary is not properly configured');
+    const error = new Error('Cloudinary is not properly configured');
+    (error as any).code = 'CLOUDINARY_CONFIG_MISSING';
+    throw error;
   }
 
   logger.info('Starting buffer upload to Cloudinary', {
     bufferSize: buffer.length,
     folder,
+    cloudName: config.cloudinary.cloudName,
     hasTransformations: !!(mergedOptions.width || mergedOptions.height || mergedOptions.crop)
   });
 
@@ -137,28 +142,40 @@ export const uploadBuffer = async (
       },
       (error, result) => {
         if (error) {
-          // Create a proper Error object with diagnostic info
+          // Comprehensive error logging for diagnosis
+          logger.error('Cloudinary upload_stream error', {
+            errorType: typeof error,
+            errorMessage: error?.message,
+            errorName: error?.name,
+            httpCode: error?.http_code,
+            errorStack: error?.stack,
+            // Log all enumerable keys for debugging
+            errorKeys: error ? Object.keys(error) : [],
+            errorValues: error ? Object.entries(error).map(([k, v]) => 
+              k === 'api_key' || k === 'api_secret' ? [k, '[REDACTED]'] : [k, v]
+            ) : []
+          });
+
+          // Create a proper Error object with all diagnostic info
           const uploadError = new Error(
-            error.message || 'Cloudinary upload failed'
+            error?.message || 'Cloudinary upload failed'
           );
           
-          // Attach safe diagnostic properties
-          (uploadError as any).statusCode = error.http_code;
-          (uploadError as any).cloudinaryError = error.name;
-          (uploadError as any).cloudinaryMessage = error.message;
-          
-          logger.error('Cloudinary upload_stream error', {
-            message: error.message,
-            name: error.name,
-            httpCode: error.http_code,
-            folder
+          // Attach diagnostic properties (non-enumerable safe properties)
+          Object.defineProperties(uploadError, {
+            statusCode: { value: error?.http_code, enumerable: true },
+            cloudinaryError: { value: error?.name, enumerable: true },
+            cloudinaryMessage: { value: error?.message, enumerable: true },
+            cloudinaryHttpCode: { value: error?.http_code, enumerable: true }
           });
 
           reject(uploadError);
         } else if (result) {
           logger.info('Buffer uploaded to Cloudinary', {
             publicId: result.public_id,
-            secureUrl: result.secure_url
+            secureUrl: result.secure_url,
+            format: result.format,
+            bytes: result.bytes
           });
 
           resolve({
@@ -172,7 +189,9 @@ export const uploadBuffer = async (
           });
         } else {
           logger.error('Cloudinary returned no result');
-          reject(new Error('Cloudinary upload failed: no result returned'));
+          const noResultError = new Error('Cloudinary upload failed: no result returned');
+          (noResultError as any).code = 'CLOUDINARY_NO_RESULT';
+          reject(noResultError);
         }
       }
     );
@@ -324,16 +343,103 @@ const cleanupLocalFile = async (filePath: string): Promise<void> => {
 };
 
 /**
- * Verify Cloudinary connection
+ * Verify Cloudinary connection using ping
  */
-export const verifyCloudinaryConnection = async (): Promise<boolean> => {
+export const verifyCloudinaryConnection = async (): Promise<{
+  success: boolean;
+  status?: string;
+  error?: string;
+  diagnostic?: Record<string, unknown>;
+}> => {
   try {
+    logger.info('Testing Cloudinary API ping');
     const result = await cloudinary.api.ping();
-    logger.info('Cloudinary connection verified');
-    return result.status === 'ok';
-  } catch (error) {
-    logger.error('Cloudinary connection verification failed', { error });
-    return false;
+    logger.info('Cloudinary API ping successful', { status: result.status });
+    return { success: true, status: result.status };
+  } catch (error: any) {
+    logger.error('Cloudinary connection verification failed', {
+      errorMessage: error?.message,
+      errorName: error?.name,
+      httpCode: error?.http_code,
+      errorKeys: error ? Object.keys(error) : []
+    });
+    return { 
+      success: false, 
+      error: error?.message || 'Connection failed',
+      diagnostic: {
+        name: error?.name,
+        httpCode: error?.http_code,
+        message: error?.message
+      }
+    };
+  }
+};
+
+/**
+ * Test authenticated upload with minimal configuration
+ */
+export const testAuthenticatedUpload = async (): Promise<{
+  success: boolean;
+  result?: CloudinaryUploadResult;
+  error?: string;
+  diagnostic?: Record<string, unknown>;
+}> => {
+  // Validate configuration first
+  if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
+    return {
+      success: false,
+      error: 'Cloudinary not configured',
+      diagnostic: {
+        hasCloudName: !!config.cloudinary.cloudName,
+        hasApiKey: !!config.cloudinary.apiKey,
+        hasApiSecret: !!config.cloudinary.apiSecret
+      }
+    };
+  }
+
+  try {
+    // Create a minimal 1x1 transparent PNG buffer (base64)
+    const minimalPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64'
+    );
+
+    logger.info('Testing authenticated upload with minimal image', {
+      bufferSize: minimalPng.length,
+      cloudName: config.cloudinary.cloudName
+    });
+
+    const result = await uploadBuffer(minimalPng, 'rawafid-omran/test');
+    
+    logger.info('Test authenticated upload successful', {
+      publicId: result.public_id,
+      secureUrl: result.secure_url
+    });
+
+    // Clean up test image
+    await deleteImage(result.public_id);
+
+    return { success: true, result };
+  } catch (error: any) {
+    logger.error('Test authenticated upload failed', {
+      errorMessage: error?.message,
+      errorName: error?.name,
+      statusCode: error?.statusCode,
+      cloudinaryError: error?.cloudinaryError,
+      cloudinaryHttpCode: error?.cloudinaryHttpCode
+    });
+
+    return {
+      success: false,
+      error: error?.message || 'Upload test failed',
+      diagnostic: {
+        name: error?.name,
+        message: error?.message,
+        statusCode: error?.statusCode,
+        cloudinaryError: error?.cloudinaryError,
+        cloudinaryHttpCode: error?.cloudinaryHttpCode
+      }
+    };
   }
 };
 
@@ -347,5 +453,6 @@ export default {
   getImageDetails,
   getOptimizedImageUrl,
   getThumbnailUrl,
-  verifyCloudinaryConnection
+  verifyCloudinaryConnection,
+  testAuthenticatedUpload
 };

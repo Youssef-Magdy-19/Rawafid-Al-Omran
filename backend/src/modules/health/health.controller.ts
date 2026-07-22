@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import config from '../../config/index.js';
+import { verifyCloudinaryConnection, testAuthenticatedUpload } from '../../services/fileUpload.service.js';
 
 /**
  * Health response
@@ -42,6 +43,33 @@ interface LivenessResponse {
   status: 'alive';
   timestamp: string;
   pid: number;
+}
+
+/**
+ * Cloudinary diagnostic response
+ */
+interface CloudinaryDiagnosticResponse {
+  status: 'success' | 'failed';
+  timestamp: string;
+  cloudinary: {
+    configured: boolean;
+    cloudName: string;
+    hasApiKey: boolean;
+    hasApiSecret: boolean;
+  };
+  ping?: {
+    success: boolean;
+    status?: string;
+    error?: string;
+    diagnostic?: Record<string, unknown>;
+  };
+  upload?: {
+    success: boolean;
+    publicId?: string;
+    secureUrl?: string;
+    error?: string;
+    diagnostic?: Record<string, unknown>;
+  };
 }
 
 const getMemoryUsage = () => {
@@ -134,8 +162,50 @@ export const livenessCheck = (_req: Request, res: Response): void => {
   res.status(200).json(response);
 };
 
+/**
+ * GET /cloudinary-diagnostic
+ * Tests Cloudinary connection and authenticated upload
+ */
+export const cloudinaryDiagnostic = async (_req: Request, res: Response): Promise<void> => {
+  const response: CloudinaryDiagnosticResponse = {
+    status: 'failed',
+    timestamp: new Date().toISOString(),
+    cloudinary: {
+      configured: !!(config.cloudinary.cloudName && config.cloudinary.apiKey && config.cloudinary.apiSecret),
+      cloudName: config.cloudinary.cloudName || 'NOT SET',
+      hasApiKey: !!config.cloudinary.apiKey,
+      hasApiSecret: !!config.cloudinary.apiSecret
+    }
+  };
+
+  // Test 1: Ping Cloudinary API
+  const pingResult = await verifyCloudinaryConnection();
+  response.ping = {
+    success: pingResult.success,
+    status: pingResult.status,
+    error: pingResult.error,
+    diagnostic: pingResult.diagnostic
+  };
+
+  // Test 2: Test authenticated upload
+  const uploadResult = await testAuthenticatedUpload();
+  response.upload = {
+    success: uploadResult.success,
+    publicId: uploadResult.result?.public_id,
+    secureUrl: uploadResult.result?.secure_url,
+    error: uploadResult.error,
+    diagnostic: uploadResult.diagnostic
+  };
+
+  // Overall status
+  response.status = (pingResult.success && uploadResult.success) ? 'success' : 'failed';
+
+  res.status(response.status === 'success' ? 200 : 503).json(response);
+};
+
 export default {
   healthCheck,
   readinessCheck,
-  livenessCheck
+  livenessCheck,
+  cloudinaryDiagnostic
 };
