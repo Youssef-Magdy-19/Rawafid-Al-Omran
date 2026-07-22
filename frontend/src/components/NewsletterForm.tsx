@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import { Button, Input } from '@components/ui';
 import { Send } from 'lucide-react';
+import { apiClient } from '@services/api/client';
 
-export interface NewsletterFormProps {
-  onSubmit?: (_email: string) => void;
-}
+export interface NewsletterFormProps {}
 
-export function NewsletterForm({ onSubmit }: NewsletterFormProps) {
+export function NewsletterForm(_props?: NewsletterFormProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-
     setIsLoading(true);
     try {
-      await onSubmit?.(email);
+      await apiClient.post('/newsletter', { email });
       setEmail('');
+    } catch (err) {
+      console.error('Failed to subscribe:', err);
     } finally {
       setIsLoading(false);
     }

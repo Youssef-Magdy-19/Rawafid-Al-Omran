@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Send, CheckCircle, FileText, DollarSign, Clock } from 'lucide-react';
 import { PageHeader, Button, Input, Textarea, Select } from '@components';
 import { useLanguage } from '@providers/LanguageProvider';
+import { apiClient } from '@services/api/client';
 
 const serviceOptions = [
   { value: 'web-development', label: 'Web Development' },
@@ -65,10 +66,15 @@ export function QuoteRequestPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsSubmitting(false);
-    setSubmitted(true);
+    
+    try {
+      await apiClient.post('/quotes', formData);
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Failed to submit quote request:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {

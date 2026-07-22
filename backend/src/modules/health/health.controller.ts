@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import config from '../../config/index.js';
-import { verifyCloudinaryConnection, testAuthenticatedUpload } from '../../services/fileUpload.service.js';
+import { verifyCloudinaryConnection, testAuthenticatedUpload, testAuthenticatedUploadMinimal } from '../../services/fileUpload.service.js';
 
 /**
  * Health response
@@ -63,7 +63,14 @@ interface CloudinaryDiagnosticResponse {
     error?: string;
     diagnostic?: Record<string, unknown>;
   };
-  upload?: {
+  uploadWithTransforms?: {
+    success: boolean;
+    publicId?: string;
+    secureUrl?: string;
+    error?: string;
+    diagnostic?: Record<string, unknown>;
+  };
+  uploadMinimal?: {
     success: boolean;
     publicId?: string;
     secureUrl?: string;
@@ -165,6 +172,7 @@ export const livenessCheck = (_req: Request, res: Response): void => {
 /**
  * GET /cloudinary-diagnostic
  * Tests Cloudinary connection and authenticated upload
+ * Tests BOTH with and without transformations to isolate the issue
  */
 export const cloudinaryDiagnostic = async (_req: Request, res: Response): Promise<void> => {
   const response: CloudinaryDiagnosticResponse = {
@@ -187,18 +195,30 @@ export const cloudinaryDiagnostic = async (_req: Request, res: Response): Promis
     diagnostic: pingResult.diagnostic
   };
 
-  // Test 2: Test authenticated upload
-  const uploadResult = await testAuthenticatedUpload();
-  response.upload = {
-    success: uploadResult.success,
-    publicId: uploadResult.result?.public_id,
-    secureUrl: uploadResult.result?.secure_url,
-    error: uploadResult.error,
-    diagnostic: uploadResult.diagnostic
+  // Test 2: Test authenticated upload WITH transformations (current production behavior)
+  const uploadWithTransformsResult = await testAuthenticatedUpload();
+  response.uploadWithTransforms = {
+    success: uploadWithTransformsResult.success,
+    publicId: uploadWithTransformsResult.result?.public_id,
+    secureUrl: uploadWithTransformsResult.result?.secure_url,
+    error: uploadWithTransformsResult.error,
+    diagnostic: uploadWithTransformsResult.diagnostic
   };
 
-  // Overall status
-  response.status = (pingResult.success && uploadResult.success) ? 'success' : 'failed';
+  // Test 3: Test authenticated upload WITHOUT transformations (diagnostic)
+  const uploadMinimalResult = await testAuthenticatedUploadMinimal();
+  response.uploadMinimal = {
+    success: uploadMinimalResult.success,
+    publicId: uploadMinimalResult.result?.public_id,
+    secureUrl: uploadMinimalResult.result?.secure_url,
+    error: uploadMinimalResult.error,
+    diagnostic: uploadMinimalResult.diagnostic
+  };
+
+  // Overall status: all tests must pass
+  response.status = (pingResult.success && uploadWithTransformsResult.success && uploadMinimalResult.success) 
+    ? 'success' 
+    : 'failed';
 
   res.status(response.status === 'success' ? 200 : 503).json(response);
 };

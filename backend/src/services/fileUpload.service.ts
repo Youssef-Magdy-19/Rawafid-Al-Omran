@@ -202,6 +202,90 @@ export const uploadBuffer = async (
 };
 
 /**
+ * Upload a buffer WITHOUT any transformations (for diagnosis)
+ */
+export const uploadBufferMinimal = async (
+  buffer: Buffer,
+  folder: string = 'rawafid-omran'
+): Promise<CloudinaryUploadResult> => {
+  // Validate Cloudinary configuration
+  if (
+    !config.cloudinary.cloudName ||
+    !config.cloudinary.apiKey ||
+    !config.cloudinary.apiSecret
+  ) {
+    const error = new Error('Cloudinary is not properly configured');
+    (error as any).code = 'CLOUDINARY_CONFIG_MISSING';
+    throw error;
+  }
+
+  logger.info('Starting MINIMAL buffer upload (no transformations)', {
+    bufferSize: buffer.length,
+    folder,
+    cloudName: config.cloudinary.cloudName
+  });
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'image'
+        // NO transformations, NO quality, NO fetch_format
+      },
+      (error, result) => {
+        if (error) {
+          // Comprehensive error logging for diagnosis
+          logger.error('Cloudinary MINIMAL upload_stream error', {
+            errorType: typeof error,
+            errorMessage: error?.message,
+            errorName: error?.name,
+            httpCode: error?.http_code,
+            errorStack: error?.stack,
+            errorKeys: error ? Object.keys(error) : [],
+            // Log all values safely
+            errorValues: error ? Object.entries(error).map(([k, v]) => 
+              k === 'api_key' || k === 'api_secret' ? [k, '[REDACTED]'] : [k, v]
+            ) : []
+          });
+
+          const uploadError = new Error(error?.message || 'Cloudinary minimal upload failed');
+          Object.defineProperties(uploadError, {
+            statusCode: { value: error?.http_code, enumerable: true },
+            cloudinaryError: { value: error?.name, enumerable: true },
+            cloudinaryMessage: { value: error?.message, enumerable: true },
+            cloudinaryHttpCode: { value: error?.http_code, enumerable: true }
+          });
+
+          reject(uploadError);
+        } else if (result) {
+          logger.info('MINIMAL buffer uploaded to Cloudinary', {
+            publicId: result.public_id,
+            secureUrl: result.secure_url
+          });
+
+          resolve({
+            public_id: result.public_id,
+            secure_url: result.secure_url,
+            format: result.format,
+            width: result.width,
+            height: result.height,
+            bytes: result.bytes,
+            created_at: result.created_at
+          });
+        } else {
+          logger.error('Cloudinary MINIMAL returned no result');
+          const noResultError = new Error('Cloudinary minimal upload failed: no result returned');
+          (noResultError as any).code = 'CLOUDINARY_NO_RESULT';
+          reject(noResultError);
+        }
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
+};
+
+/**
  * Upload multiple images to Cloudinary (gallery)
  */
 export const uploadGallery = async (
@@ -376,7 +460,7 @@ export const verifyCloudinaryConnection = async (): Promise<{
 };
 
 /**
- * Test authenticated upload with minimal configuration
+ * Test authenticated upload WITH transformations (current production behavior)
  */
 export const testAuthenticatedUpload = async (): Promise<{
   success: boolean;
@@ -404,14 +488,15 @@ export const testAuthenticatedUpload = async (): Promise<{
       'base64'
     );
 
-    logger.info('Testing authenticated upload with minimal image', {
+    logger.info('Testing authenticated upload WITH transformations', {
       bufferSize: minimalPng.length,
       cloudName: config.cloudinary.cloudName
     });
 
+    // Test WITH transformations (current production behavior)
     const result = await uploadBuffer(minimalPng, 'rawafid-omran/test');
     
-    logger.info('Test authenticated upload successful', {
+    logger.info('Test authenticated upload WITH transformations successful', {
       publicId: result.public_id,
       secureUrl: result.secure_url
     });
@@ -421,7 +506,7 @@ export const testAuthenticatedUpload = async (): Promise<{
 
     return { success: true, result };
   } catch (error: any) {
-    logger.error('Test authenticated upload failed', {
+    logger.error('Test authenticated upload WITH transformations failed', {
       errorMessage: error?.message,
       errorName: error?.name,
       statusCode: error?.statusCode,
@@ -443,9 +528,79 @@ export const testAuthenticatedUpload = async (): Promise<{
   }
 };
 
+/**
+ * Test authenticated upload WITHOUT transformations (diagnostic)
+ */
+export const testAuthenticatedUploadMinimal = async (): Promise<{
+  success: boolean;
+  result?: CloudinaryUploadResult;
+  error?: string;
+  diagnostic?: Record<string, unknown>;
+}> => {
+  // Validate configuration first
+  if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
+    return {
+      success: false,
+      error: 'Cloudinary not configured',
+      diagnostic: {
+        hasCloudName: !!config.cloudinary.cloudName,
+        hasApiKey: !!config.cloudinary.apiKey,
+        hasApiSecret: !!config.cloudinary.apiSecret
+      }
+    };
+  }
+
+  try {
+    // Create a minimal 1x1 transparent PNG buffer (base64)
+    const minimalPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64'
+    );
+
+    logger.info('Testing authenticated upload WITHOUT transformations (diagnostic)', {
+      bufferSize: minimalPng.length,
+      cloudName: config.cloudinary.cloudName
+    });
+
+    // Test WITHOUT transformations
+    const result = await uploadBufferMinimal(minimalPng, 'rawafid-omran/test-minimal');
+    
+    logger.info('Test authenticated upload WITHOUT transformations successful', {
+      publicId: result.public_id,
+      secureUrl: result.secure_url
+    });
+
+    // Clean up test image
+    await deleteImage(result.public_id);
+
+    return { success: true, result };
+  } catch (error: any) {
+    logger.error('Test authenticated upload WITHOUT transformations failed', {
+      errorMessage: error?.message,
+      errorName: error?.name,
+      statusCode: error?.statusCode,
+      cloudinaryError: error?.cloudinaryError,
+      cloudinaryHttpCode: error?.cloudinaryHttpCode
+    });
+
+    return {
+      success: false,
+      error: error?.message || 'Minimal upload test failed',
+      diagnostic: {
+        name: error?.name,
+        message: error?.message,
+        statusCode: error?.statusCode,
+        cloudinaryError: error?.cloudinaryError,
+        cloudinaryHttpCode: error?.cloudinaryHttpCode
+      }
+    };
+  }
+};
+
 export default {
   uploadSingleImage,
   uploadBuffer,
+  uploadBufferMinimal,
   uploadGallery,
   deleteImage,
   deleteMultipleImages,
@@ -454,5 +609,6 @@ export default {
   getOptimizedImageUrl,
   getThumbnailUrl,
   verifyCloudinaryConnection,
-  testAuthenticatedUpload
+  testAuthenticatedUpload,
+  testAuthenticatedUploadMinimal
 };

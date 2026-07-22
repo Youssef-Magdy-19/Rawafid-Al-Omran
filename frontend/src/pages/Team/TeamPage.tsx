@@ -1,9 +1,10 @@
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Linkedin, User } from 'lucide-react';
+import { Mail, Phone, User } from 'lucide-react';
 import { SectionHeader } from '@components';
-import { useTeam } from '@hooks/useContact';
+import { useTeamMembers } from '@hooks/useTeam';
+import { useLanguage } from '@providers/LanguageProvider';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -20,7 +21,8 @@ const itemVariants = {
 
 export function TeamPage() {
   const { t } = useTranslation();
-  const { data: team, isLoading, error } = useTeam();
+  const { language } = useLanguage();
+  const { data: team, isLoading, error } = useTeamMembers();
 
   if (isLoading) {
     return (
@@ -92,23 +94,14 @@ export function TeamPage() {
                     <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-muted">
                       <User className="h-16 w-16 text-muted-foreground" />
                     </div>
-                    {member.linkedin && (
-                      <a
-                        href={member.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110"
-                      >
-                        <Linkedin className="h-5 w-5" />
-                      </a>
-                    )}
+
                   </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-1 text-xl font-bold text-foreground">{member.name}</h3>
-                  <p className="mb-2 text-sm font-medium text-primary">{member.position}</p>
-                  <p className="mb-4 text-xs text-muted-foreground">{member.department}</p>
-                  <p className="mb-4 text-sm text-muted-foreground line-clamp-3">{member.bio}</p>
+                  <h3 className="mb-1 text-xl font-bold text-foreground">{language === 'ar' ? member.nameAr || member.name : member.name}</h3>
+                  <p className="mb-2 text-sm font-medium text-primary">{language === 'ar' ? member.positionAr || member.position : member.position}</p>
+                  <p className="mb-4 text-xs text-muted-foreground">{language === 'ar' ? member.departmentAr || member.department : member.department}</p>
+                  <p className="mb-4 text-sm text-muted-foreground line-clamp-3">{language === 'ar' ? member.bioAr || member.bio : member.bio}</p>
                   <div className="flex justify-center gap-3">
                     {member.email && (
                       <a

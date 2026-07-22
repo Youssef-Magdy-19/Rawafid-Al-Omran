@@ -13,6 +13,10 @@ import { BlogDetailsPage } from '@pages/Blog/BlogDetailsPage';
 import { CareersPage } from '@pages/Careers/CareersPage';
 import { CareerDetailsPage } from '@pages/Careers/CareerDetailsPage';
 import { FAQPage } from '@pages/FAQ/FAQPage';
+import { ServiceDetailsPage } from '@pages/Services/ServiceDetailsPage';
+import { ProjectDetailsPage } from '@pages/Projects/ProjectDetailsPage';
+import { PartnersPage } from '@pages/Partners/PartnersPage';
+import { TestimonialsPage } from '@pages/Testimonials/TestimonialsPage';
 import { QuoteRequestPage } from '@pages/Quote/QuoteRequestPage';
 import { SearchPage } from '@pages/Search/SearchPage';
 import { PrivacyPolicyPage } from '@pages/Legal/PrivacyPolicyPage';
@@ -90,11 +94,15 @@ export function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="services" element={<ServicesPage />} />
+          <Route path="services/:slug" element={<ServiceDetailsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:slug" element={<ProjectDetailsPage />} />
           <Route path="team" element={<TeamPage />} />
           <Route path="contact" element={<ContactPage />} />
           <Route path="blog" element={<BlogPage />} />
-          <Route path="blog/:id" element={<BlogDetailsPage />} />
+          <Route path="blog/:slug" element={<BlogDetailsPage />} />
+          <Route path="partners" element={<PartnersPage />} />
+          <Route path="testimonials" element={<TestimonialsPage />} />
           <Route path="careers" element={<CareersPage />} />
           <Route path="careers/:id" element={<CareerDetailsPage />} />
           <Route path="faq" element={<FAQPage />} />

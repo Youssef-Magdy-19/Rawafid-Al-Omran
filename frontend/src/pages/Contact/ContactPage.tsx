@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, Clock, Send, CheckCircle } from 'lucide-react';
 import { Button, Input, Textarea, Select } from '@components';
+import { apiClient } from '@services/api/client';
 
 export function ContactPage() {
   const { t } = useTranslation();
@@ -22,11 +23,14 @@ export function ContactPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+    try {
+      await apiClient.post('/contacts', formData);
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error('Failed to submit contact form:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
