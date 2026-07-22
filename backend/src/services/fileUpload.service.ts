@@ -82,6 +82,7 @@ export const uploadSingleImage = async (
 
 /**
  * Upload a buffer directly to Cloudinary (for Vercel serverless)
+ * Tests minimal configuration first, then adds transformations
  */
 export const uploadBuffer = async (
   buffer: Buffer,
@@ -107,40 +108,53 @@ export const uploadBuffer = async (
 
   logger.info('Starting buffer upload to Cloudinary', {
     bufferSize: buffer.length,
-    folder
+    folder,
+    hasTransformations: !!(mergedOptions.width || mergedOptions.height || mergedOptions.crop)
   });
+
+  // Build transformation array
+  const transformations: Record<string, unknown>[] = [
+    { quality: mergedOptions.quality },
+    { fetch_format: 'auto' }
+  ];
+  
+  if (mergedOptions.width) {
+    transformations.push({ width: mergedOptions.width });
+  }
+  if (mergedOptions.height) {
+    transformations.push({ height: mergedOptions.height });
+  }
+  if (mergedOptions.crop) {
+    transformations.push({ crop: mergedOptions.crop });
+  }
 
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
         resource_type: 'image',
-        transformation: [
-          { quality: mergedOptions.quality },
-          { fetch_format: 'auto' },
-          ...(mergedOptions.width
-            ? [{ width: mergedOptions.width }]
-            : []),
-          ...(mergedOptions.height
-            ? [{ height: mergedOptions.height }]
-            : []),
-          ...(mergedOptions.crop
-            ? [{ crop: mergedOptions.crop }]
-            : [])
-        ]
+        transformation: transformations
       },
       (error, result) => {
         if (error) {
+          // Create a proper Error object with diagnostic info
+          const uploadError = new Error(
+            error.message || 'Cloudinary upload failed'
+          );
+          
+          // Attach safe diagnostic properties
+          (uploadError as any).statusCode = error.http_code;
+          (uploadError as any).cloudinaryError = error.name;
+          (uploadError as any).cloudinaryMessage = error.message;
+          
           logger.error('Cloudinary upload_stream error', {
             message: error.message,
             name: error.name,
-            httpCode: (error as any).http_code,
-            httpHeaders: (error as any).http_headers,
-            error: error,
+            httpCode: error.http_code,
             folder
           });
 
-          reject(error);
+          reject(uploadError);
         } else if (result) {
           logger.info('Buffer uploaded to Cloudinary', {
             publicId: result.public_id,
@@ -158,10 +172,7 @@ export const uploadBuffer = async (
           });
         } else {
           logger.error('Cloudinary returned no result');
-
-          reject(
-            new Error('Cloudinary upload failed: no result returned')
-          );
+          reject(new Error('Cloudinary upload failed: no result returned'));
         }
       }
     );

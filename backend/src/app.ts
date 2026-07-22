@@ -32,6 +32,9 @@ import uploadRoutes from './routes/upload.routes.js';
 // Create Express application
 const app = express();
 
+// Trust Vercel proxy for correct IP detection behind CDN
+app.set('trust proxy', 1);
+
 // Configure middlewares
 app.use(requestIdMiddleware);
 app.use(helmet());
