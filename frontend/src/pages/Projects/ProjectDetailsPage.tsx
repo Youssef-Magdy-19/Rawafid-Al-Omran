@@ -2,36 +2,39 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { useProject } from '@hooks/useProjects';
+import { ArrowLeft, ArrowRight, MapPin, Calendar, Building2, Check, Target, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { useProject, useProjects } from '@hooks/useProjects';
 import { useLanguage } from '@providers/LanguageProvider';
-import { ArrowLeft, ArrowRight, MapPin, Calendar, Building2, Clock, Check } from 'lucide-react';
-import { Badge, Image } from '@components';
-import { Button } from '@components/ui';
+import { Badge, Breadcrumb, CTABanner, ErrorState, SkeletonCard } from '@components';
+import type { BreadcrumbItem } from '@components';
 
 export function ProjectDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
   const { t } = useTranslation();
   const { language, isRTL } = useLanguage();
-  const { data: project, isLoading, error } = useProject(slug || '');
+  const { data: project, isLoading, error, refetch } = useProject(slug || '');
+  const { data: allProjects } = useProjects();
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="min-h-screen">
+        <div className="section-gradient py-20 lg:py-32">
+          <div className="container mx-auto px-4">
+            <SkeletonCard />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center px-4">
-        <h2 className="text-2xl font-bold text-foreground">{t('common.error')}</h2>
-        <p className="text-muted-foreground">{t('common.pageNotFound')}</p>
-        <Link to="/projects">
-          <Button variant="outline" leftIcon={<ArrowLeft className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />}>
-            {t('common.backToProjects')}
-          </Button>
-        </Link>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <ErrorState
+          title={t('common.error')}
+          description={t('common.pageNotFound')}
+          onRetry={() => refetch()}
+        />
       </div>
     );
   }
@@ -46,6 +49,11 @@ export function ProjectDetailsPage() {
   const results = language === 'ar' ? project.resultsAr : project.results;
   const category = language === 'ar' ? project.categoryAr : project.category;
 
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: t('navigation.projects'), href: '/projects' },
+    { label: title },
+  ];
+
   return (
     <>
       <Helmet>
@@ -53,34 +61,43 @@ export function ProjectDetailsPage() {
         <meta name="description" content={description} />
       </Helmet>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-primary/5 to-background py-20 lg:py-32">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0000000a_1px,transparent_1px),linear-gradient(to_bottom,#0000000a_1px,transparent_1px)] bg-[size:3rem_3rem]" />
-        <div className="container relative mx-auto px-4 lg:px-8">
+      {/* Hero Image with Overlay */}
+      <section className="relative min-h-[80vh] flex items-end overflow-hidden">
+        {project.thumbnail ? (
+          <img
+            src={project.thumbnail}
+            alt={title}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+        <div className="container relative mx-auto px-4 lg:px-8 pb-16 lg:pb-24">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mx-auto max-w-4xl"
+            transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
           >
             <Link
               to="/projects"
-              className={`inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}
+              className={`inline-flex items-center gap-2 text-sm text-white/70 hover:text-white mb-6 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
             >
-              <ArrowLeft className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
+              {isRTL ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
               {t('common.backToProjects')}
             </Link>
-
             <div className="flex flex-wrap gap-3 mb-4">
-              <Badge variant="secondary">{category}</Badge>
-              <Badge variant={project.status === 'completed' ? 'default' : 'outline'}>
+              <Badge variant="primary" size="sm">{category}</Badge>
+              <Badge variant={project.status === 'completed' ? 'default' : 'outline'} size="sm">
                 {project.status === 'completed' ? t('common.completed') : t('common.inProgress')}
               </Badge>
             </div>
-
-            <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">{title}</h1>
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8">{description}</p>
-
+            <h1 className="mb-6 text-5xl font-bold tracking-tight text-foreground lg:text-6xl lg:leading-tight">
+              {title}
+            </h1>
+            <p className="text-lg text-muted-foreground leading-relaxed max-w-3xl mb-8">
+              {description}
+            </p>
             <div className={`flex flex-wrap gap-6 text-sm text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
               {location && (
                 <span className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
@@ -102,7 +119,7 @@ export function ProjectDetailsPage() {
               )}
               {project.duration && (
                 <span className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <Clock className="h-4 w-4 text-primary" />
+                  <Calendar className="h-4 w-4 text-primary" />
                   {project.duration}
                 </span>
               )}
@@ -111,48 +128,114 @@ export function ProjectDetailsPage() {
         </div>
       </section>
 
-      {/* Gallery */}
-      {project.images && project.images.length > 0 && (
-        <section className="py-16 lg:py-24">
-          <div className="container mx-auto px-4 lg:px-8">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-2xl font-bold text-foreground mb-8"
-            >
-              {t('projects.galleryTitle')}
-            </motion.h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {project.images.map((img, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="overflow-hidden rounded-xl"
-                >
-                  <Image src={img} alt={`${title} - ${index + 1}`} aspectRatio="video" className="w-full" />
-                </motion.div>
-              ))}
-            </div>
+      {/* Project Info Bar */}
+      <section className="section-gradient py-12">
+        <div className="container mx-auto px-4 lg:px-8">
+          <Breadcrumb items={breadcrumbs} />
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-8">
+            {location && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4 }}
+                className="premium-card p-5 flex items-center gap-4"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <MapPin className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('common.location') || 'Location'}</p>
+                  <p className="font-semibold text-foreground">{location}</p>
+                </div>
+              </motion.div>
+            )}
+            {project.year && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="premium-card p-5 flex items-center gap-4"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('common.year') || 'Year'}</p>
+                  <p className="font-semibold text-foreground">{project.year}</p>
+                </div>
+              </motion.div>
+            )}
+            {client && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                className="premium-card p-5 flex items-center gap-4"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('common.client') || 'Client'}</p>
+                  <p className="font-semibold text-foreground">{client}</p>
+                </div>
+              </motion.div>
+            )}
+            {project.duration && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                className="premium-card p-5 flex items-center gap-4"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('common.duration') || 'Duration'}</p>
+                  <p className="font-semibold text-foreground">{project.duration}</p>
+                </div>
+              </motion.div>
+            )}
+            {project.budget && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+                className="premium-card p-5 flex items-center gap-4"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('common.budget') || 'Budget'}</p>
+                  <p className="font-semibold text-foreground">{language === 'ar' ? project.budgetAr : project.budget}</p>
+                </div>
+              </motion.div>
+            )}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* Project Details */}
-      <section className="bg-muted/30 py-16 lg:py-24">
+      {/* Overview / Challenge / Solution / Results */}
+      <section className="py-16 lg:py-24">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2">
+            {/* Features */}
             {features && features.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                initial={{ opacity: 0, x: isRTL ? 30 : -30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
               >
-                <h3 className="text-xl font-bold text-foreground mb-4">{t('projects.featuresTitle')}</h3>
+                <span className="premium-subtitle mb-4">{t('common.featuresTitle')}</span>
+                <h3 className="text-2xl font-bold text-foreground mb-6">{t('projects.featuresTitle')}</h3>
                 <div className="space-y-3">
                   {features.map((feature, index) => (
                     <div key={index} className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
@@ -169,37 +252,58 @@ export function ProjectDetailsPage() {
             <div className="space-y-8">
               {challenges && (
                 <motion.div
-                  initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                  initial={{ opacity: 0, x: isRTL ? -30 : 30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
                 >
-                  <h3 className="text-xl font-bold text-foreground mb-4">{t('projects.challengesTitle')}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{challenges}</p>
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+                      <Target className="h-5 w-5 text-destructive" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground">{t('projects.challengesTitle')}</h3>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed pl-14">{challenges}</p>
                 </motion.div>
               )}
 
               {solutions && (
                 <motion.div
-                  initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                  initial={{ opacity: 0, x: isRTL ? -30 : 30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
+                  transition={{ duration: 0.6, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
                 >
-                  <h3 className="text-xl font-bold text-foreground mb-4">{t('projects.solutionsTitle')}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{solutions}</p>
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground">{t('projects.solutionsTitle')}</h3>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed pl-14">{solutions}</p>
                 </motion.div>
               )}
 
               {results && (
                 <motion.div
-                  initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                  initial={{ opacity: 0, x: isRTL ? -30 : 30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
+                  transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                 >
-                  <h3 className="text-xl font-bold text-foreground mb-4">{t('projects.resultsTitle')}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{results}</p>
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10">
+                      <TrendingUp className="h-5 w-5 text-secondary" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground">{t('projects.resultsTitle')}</h3>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed pl-14">{results}</p>
                 </motion.div>
               )}
             </div>
@@ -207,32 +311,119 @@ export function ProjectDetailsPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-primary py-16 lg:py-24">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="mx-auto max-w-3xl text-center"
-          >
-            <h2 className="mb-4 text-3xl font-bold text-primary-foreground lg:text-4xl">
-              {t('projects.cta.title')}
-            </h2>
-            <p className="mb-8 text-lg text-primary-foreground/80">
-              {t('projects.cta.description')}
-            </p>
-            <Link
-              to="/contact"
-              className={`inline-flex items-center gap-2 rounded-lg bg-background px-8 py-3 font-semibold text-primary transition-colors hover:bg-background/90 ${isRTL ? 'flex-row-reverse' : ''}`}
+      {/* Image Gallery */}
+      {project.images && project.images.length > 0 && (
+        <section className="py-16 lg:py-24">
+          <div className="container mx-auto px-4 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="mb-10"
             >
-              {t('projects.cta.button')}
-              <ArrowRight className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
-            </Link>
-          </motion.div>
-        </div>
-      </section>
+              <span className="premium-subtitle mb-4">{t('common.galleryTitle')}</span>
+              <h2 className="text-3xl font-bold text-foreground lg:text-4xl">{t('projects.galleryTitle')}</h2>
+            </motion.div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {project.images.map((img, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: index * 0.08 }}
+                  className={`overflow-hidden rounded-xl ${index === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}
+                >
+                  <img
+                    src={img}
+                    alt={`${title} - ${index + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Related Projects */}
+      {allProjects && allProjects.length > 1 && (
+        <section className="section-gradient-alt py-16 lg:py-24">
+          <div className="container mx-auto px-4 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="mb-12"
+            >
+              <span className="premium-subtitle mb-4">{t('projects.subtitle')}</span>
+              <h2 className="text-3xl font-bold text-foreground lg:text-4xl">{t('projects.title')}</h2>
+            </motion.div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {allProjects
+                ?.filter((p) => p.id !== project.id)
+                .slice(0, 3)
+                .map((related, index) => {
+                  const relatedTitle = language === 'ar' ? related.titleAr : related.title;
+                  const relatedCategory = language === 'ar' ? related.categoryAr : related.category;
+                  return (
+                    <motion.div
+                      key={related.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: index * 0.1 }}
+                    >
+                      <Link
+                        to={`/projects/${related.slug}`}
+                        className="group block"
+                      >
+                        <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
+                          {related.thumbnail ? (
+                            <img
+                              src={related.thumbnail}
+                              alt={language === 'ar' ? related.titleAr : related.title}
+                              className="h-full w-full object-cover transition-all duration-700 group-hover:scale-110"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5">
+                              <Building2 className="h-12 w-12 text-primary/20" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all duration-500 group-hover:bg-black/40">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/80 text-white opacity-0 transition-all duration-300 group-hover:opacity-100 backdrop-blur-sm">
+                              <ArrowUpRight className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <div className="absolute top-4 left-4">
+                            <Badge variant="primary" size="sm" className="backdrop-blur-sm">
+                              {relatedCategory}
+                            </Badge>
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 p-5">
+                            <h3 className="text-lg font-bold text-white">{relatedTitle}</h3>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* CTA */}
+      <CTABanner
+        title={t('projects.cta.title')}
+        description={t('projects.cta.description')}
+        buttonText={t('projects.cta.button')}
+        buttonLink="/contact"
+        variant="accent"
+      />
     </>
   );
 }

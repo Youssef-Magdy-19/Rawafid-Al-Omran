@@ -286,6 +286,76 @@ export const uploadBufferMinimal = async (
 };
 
 /**
+ * Upload buffer to ROOT folder (no folder specified) - diagnostic
+ */
+export const uploadBufferNoFolder = async (buffer: Buffer): Promise<CloudinaryUploadResult> => {
+  if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
+    const error = new Error('Cloudinary is not properly configured');
+    (error as any).code = 'CLOUDINARY_CONFIG_MISSING';
+    throw error;
+  }
+
+  logger.info('Starting upload to ROOT folder (no folder)', {
+    bufferSize: buffer.length,
+    cloudName: config.cloudinary.cloudName
+  });
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'image'
+        // NO folder at all
+      },
+      (error, result) => {
+        if (error) {
+          logger.error('Cloudinary ROOT folder upload error', {
+            errorMessage: error?.message,
+            errorName: error?.name,
+            httpCode: error?.http_code,
+            errorKeys: error ? Object.keys(error) : [],
+            errorValues: error ? Object.entries(error).map(([k, v]) => 
+              k === 'api_key' || k === 'api_secret' ? [k, '[REDACTED]'] : [k, v]
+            ) : []
+          });
+
+          const uploadError = new Error(error?.message || 'Cloudinary root folder upload failed');
+          Object.defineProperties(uploadError, {
+            statusCode: { value: error?.http_code, enumerable: true },
+            cloudinaryError: { value: error?.name, enumerable: true },
+            cloudinaryMessage: { value: error?.message, enumerable: true },
+            cloudinaryHttpCode: { value: error?.http_code, enumerable: true }
+          });
+
+          reject(uploadError);
+        } else if (result) {
+          logger.info('ROOT folder upload successful', {
+            publicId: result.public_id,
+            secureUrl: result.secure_url
+          });
+
+          resolve({
+            public_id: result.public_id,
+            secure_url: result.secure_url,
+            format: result.format,
+            width: result.width,
+            height: result.height,
+            bytes: result.bytes,
+            created_at: result.created_at
+          });
+        } else {
+          const noResultError = new Error('Cloudinary root folder upload failed: no result');
+          (noResultError as any).code = 'CLOUDINARY_NO_RESULT';
+          reject(noResultError);
+        }
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
+};
+
+
+/**
  * Upload multiple images to Cloudinary (gallery)
  */
 export const uploadGallery = async (
@@ -468,7 +538,6 @@ export const testAuthenticatedUpload = async (): Promise<{
   error?: string;
   diagnostic?: Record<string, unknown>;
 }> => {
-  // Validate configuration first
   if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
     return {
       success: false,
@@ -482,7 +551,6 @@ export const testAuthenticatedUpload = async (): Promise<{
   }
 
   try {
-    // Create a minimal 1x1 transparent PNG buffer (base64)
     const minimalPng = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       'base64'
@@ -493,7 +561,6 @@ export const testAuthenticatedUpload = async (): Promise<{
       cloudName: config.cloudinary.cloudName
     });
 
-    // Test WITH transformations (current production behavior)
     const result = await uploadBuffer(minimalPng, 'rawafid-omran/test');
     
     logger.info('Test authenticated upload WITH transformations successful', {
@@ -501,7 +568,6 @@ export const testAuthenticatedUpload = async (): Promise<{
       secureUrl: result.secure_url
     });
 
-    // Clean up test image
     await deleteImage(result.public_id);
 
     return { success: true, result };
@@ -537,7 +603,6 @@ export const testAuthenticatedUploadMinimal = async (): Promise<{
   error?: string;
   diagnostic?: Record<string, unknown>;
 }> => {
-  // Validate configuration first
   if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
     return {
       success: false,
@@ -551,7 +616,6 @@ export const testAuthenticatedUploadMinimal = async (): Promise<{
   }
 
   try {
-    // Create a minimal 1x1 transparent PNG buffer (base64)
     const minimalPng = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       'base64'
@@ -562,7 +626,6 @@ export const testAuthenticatedUploadMinimal = async (): Promise<{
       cloudName: config.cloudinary.cloudName
     });
 
-    // Test WITHOUT transformations
     const result = await uploadBufferMinimal(minimalPng, 'rawafid-omran/test-minimal');
     
     logger.info('Test authenticated upload WITHOUT transformations successful', {
@@ -570,7 +633,6 @@ export const testAuthenticatedUploadMinimal = async (): Promise<{
       secureUrl: result.secure_url
     });
 
-    // Clean up test image
     await deleteImage(result.public_id);
 
     return { success: true, result };
@@ -597,10 +659,70 @@ export const testAuthenticatedUploadMinimal = async (): Promise<{
   }
 };
 
+/**
+ * Test upload to ROOT folder (no folder specified)
+ */
+export const testUploadNoFolder = async (): Promise<{
+  success: boolean;
+  result?: CloudinaryUploadResult;
+  error?: string;
+  diagnostic?: Record<string, unknown>;
+}> => {
+  if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
+    return {
+      success: false,
+      error: 'Cloudinary not configured'
+    };
+  }
+
+  try {
+    const minimalPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64'
+    );
+
+    logger.info('Testing upload to ROOT folder (no folder)', {
+      bufferSize: minimalPng.length,
+      cloudName: config.cloudinary.cloudName
+    });
+
+    const result = await uploadBufferNoFolder(minimalPng);
+    
+    logger.info('ROOT folder upload successful', {
+      publicId: result.public_id,
+      secureUrl: result.secure_url
+    });
+
+    await deleteImage(result.public_id);
+
+    return { success: true, result };
+  } catch (error: any) {
+    logger.error('ROOT folder upload failed', {
+      errorMessage: error?.message,
+      errorName: error?.name,
+      statusCode: error?.statusCode,
+      cloudinaryError: error?.cloudinaryError
+    });
+
+    return {
+      success: false,
+      error: error?.message || 'Root folder upload failed',
+      diagnostic: {
+        name: error?.name,
+        message: error?.message,
+        statusCode: error?.statusCode,
+        cloudinaryError: error?.cloudinaryError,
+        cloudinaryHttpCode: error?.cloudinaryHttpCode
+      }
+    };
+  }
+};
+
 export default {
   uploadSingleImage,
   uploadBuffer,
   uploadBufferMinimal,
+  uploadBufferNoFolder,
   uploadGallery,
   deleteImage,
   deleteMultipleImages,
@@ -610,5 +732,6 @@ export default {
   getThumbnailUrl,
   verifyCloudinaryConnection,
   testAuthenticatedUpload,
-  testAuthenticatedUploadMinimal
+  testAuthenticatedUploadMinimal,
+  testUploadNoFolder
 };

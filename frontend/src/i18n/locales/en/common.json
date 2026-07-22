@@ -55,7 +55,19 @@
     "replaceImage": "Replace image",
     "noImages": "No images uploaded yet",
     "imagesCount": "{{count}} image(s) uploaded",
-    "unsupportedFormat": "Unsupported file format"
+    "unsupportedFormat": "Unsupported file format",
+    "visitWebsite": "Visit Website",
+    "pageNotFound": "The page you're looking for doesn't exist.",
+    "backToServices": "Back to Services",
+    "backToProjects": "Back to Projects",
+    "tryAgain": "Please try again later.",
+    "view": "View",
+    "featuresTitle": "Features",
+    "benefitsTitle": "Benefits",
+    "galleryTitle": "Project Gallery",
+    "challengesTitle": "Challenges",
+    "solutionsTitle": "Solutions",
+    "resultsTitle": "Results"
   },
   "company": {
     "name": "Rawafid Al Omran",
@@ -90,10 +102,13 @@
     "followUs": "Follow Us",
     "contact": "Contact Us",
     "legal": "Legal",
+    "contactInfo": "Contact Info",
+    "followUs": "Follow Us",
     "email": "Email",
     "phone": "Phone",
     "address": "Address",
-    "riyadh": "Riyadh, Saudi Arabia"
+    "riyadh": "Riyadh, Saudi Arabia",
+    "crafted": "Crafted with precision in Riyadh"
   },
   "services": {
     "seo": {
@@ -187,6 +202,23 @@
     "clientSatisfaction": "Client Satisfaction"
   },
   "testimonials": {
+    "seo": {
+      "title": "Testimonials - Rawafid Al Omran",
+      "description": "See what our clients say about our construction and engineering services."
+    },
+    "hero": {
+      "title": "Client Testimonials",
+      "description": "Hear from our satisfied clients about their experience working with us"
+    },
+    "empty": {
+      "title": "No testimonials yet",
+      "description": "Testimonials from our clients will appear here."
+    },
+    "cta": {
+      "title": "Ready to be our next success story?",
+      "description": "Contact us today and let us help you with your next project.",
+      "button": "Get Started"
+    },
     "pageTitle": "Testimonials Management",
     "pageDescription": "Manage client testimonials and reviews",
     "searchPlaceholder": "Search testimonials...",
@@ -253,7 +285,10 @@
   },
   "newsletter": {
     "title": "Subscribe to Our Newsletter",
-    "description": "Stay updated with our latest projects, news, and insights."
+    "description": "Stay updated with our latest projects, news, and insights.",
+    "placeholder": "Enter your email",
+    "subscribe": "Subscribe",
+    "error": "Failed to subscribe. Please try again."
   },
   "notFound": {
     "seo": {
@@ -414,6 +449,10 @@
       "hours": {
         "label": "Working Hours",
         "value": "Sunday - Thursday: 8 AM - 6 PM"
+      },
+      "phone": {
+        "label": "Phone",
+        "value": "+966 XX XXX XXXX"
       }
     },
     "form": {
@@ -432,7 +471,8 @@
       "messagePlaceholder": "Write your message here...",
       "submit": "Send Message",
       "submitting": "Sending...",
-      "otherService": "Other"
+      "otherService": "Other",
+      "error": "Failed to send your message. Please check your information and try again."
     },
     "success": {
       "title": "Your message was sent successfully!",
@@ -441,6 +481,21 @@
     }
   },
   "blog": {
+    "seo": {
+      "title": "Our Blog - Rawafid Al Omran",
+      "description": "Read our latest articles, insights, and news about construction and engineering."
+    },
+    "title": "Our Blog",
+    "subtitle": "Insights, tutorials, and news from our team",
+    "search": "Search articles...",
+    "all": "All",
+    "readMore": "Read More",
+    "backToBlog": "Back to Blog",
+    "share": "Share",
+    "error": "Failed to load articles. Please try again.",
+    "retry": "Retry",
+    "noArticles": "No articles found.",
+    "noResults": "No articles match your search.",
     "pageTitle": "Blog Management",
     "pageDescription": "Manage blog posts and articles",
     "searchPlaceholder": "Search blog posts...",
@@ -545,6 +600,23 @@
     "checkBack": "Check back soon for new opportunities"
   },
   "faq": {
+    "seo": {
+      "title": "FAQ - Rawafid Al Omran",
+      "description": "Find answers to frequently asked questions about our construction and engineering services."
+    },
+    "hero": {
+      "title": "Frequently Asked Questions",
+      "description": "Find answers to common questions about our services and process"
+    },
+    "empty": {
+      "title": "No FAQs available",
+      "description": "Check back later for updated frequently asked questions."
+    },
+    "cta": {
+      "title": "Still have questions?",
+      "description": "Can't find the answer you're looking for? Our team is here to help.",
+      "button": "Contact Us"
+    },
     "pageTitle": "FAQ Management",
     "pageDescription": "Manage frequently asked questions",
     "searchPlaceholder": "Search FAQ...",
@@ -625,7 +697,30 @@
       "timeline": "Timeline",
       "projectDescription": "Project Description",
       "howDidYouHear": "How did you hear about us?",
-      "submit": "Submit Quote Request"
+      "submit": "Submit Quote Request",
+      "error": "Failed to submit your request. Please check your information and try again.",
+      "serviceOptions": {
+        "construction": "Construction",
+        "design": "Design & Engineering",
+        "infrastructure": "Infrastructure",
+        "renovation": "Renovation & Restoration",
+        "consulting": "Consulting",
+        "other": "Other"
+      },
+      "budgetOptions": {
+        "under-5k": "Under $5,000",
+        "5k-15k": "$5,000 – $15,000",
+        "15k-50k": "$15,000 – $50,000",
+        "50k-100k": "$50,000 – $100,000",
+        "over-100k": "Over $100,000",
+        "not-sure": "Not sure yet"
+      },
+      "timelineOptions": {
+        "asap": "As soon as possible",
+        "1-2-months": "1–2 months",
+        "3-6-months": "3–6 months",
+        "flexible": "Flexible"
+      }
     },
     "whatToExpect": "What to Expect",
     "review": "Review",
@@ -635,7 +730,14 @@
     "response": "Response",
     "responseDesc": "Get a response within 24-48 hours",
     "needHelp": "Need Immediate Help?",
+    "needHelpDesc": "Prefer to talk directly? Our team is ready to assist you.",
     "whyChooseUs": "Why Choose Us",
+    "trust": {
+      "projects": "100+ successful projects",
+      "pricing": "Transparent pricing",
+      "costs": "No hidden costs",
+      "support": "Dedicated support"
+    },
     "success": {
       "title": "Quote Request Submitted!",
       "description": "Thank you for your interest. Our team will get back to you within 24-48 hours.",
@@ -3081,6 +3183,23 @@
     "noAvatar": "No avatar image"
   },
   "partners": {
+    "seo": {
+      "title": "Our Partners - Rawafid Al Omran",
+      "description": "Meet our trusted partners and collaborators in the construction and engineering industry."
+    },
+    "hero": {
+      "title": "Our Partners",
+      "description": "Trusted partners who collaborate with us to deliver excellence"
+    },
+    "empty": {
+      "title": "No partners yet",
+      "description": "Our partner network is growing. Check back soon."
+    },
+    "cta": {
+      "title": "Interested in partnering with us?",
+      "description": "We're always looking for strategic partners who share our commitment to quality.",
+      "button": "Contact Us"
+    },
     "pageTitle": "Partners Management",
     "pageDescription": "Manage company partners and strategic alliances",
     "searchPlaceholder": "Search partners...",

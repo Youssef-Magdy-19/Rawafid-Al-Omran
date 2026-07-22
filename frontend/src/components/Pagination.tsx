@@ -62,7 +62,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+        className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
         aria-label={t('common.previous') || 'Previous'}
       >
         <ChevronLeft className="h-5 w-5" />
@@ -74,7 +74,7 @@ export function Pagination({
           return (
             <span
               key={`dots-${index}`}
-              className="px-3 py-2 text-gray-500"
+              className="px-3 py-2 text-muted-foreground"
               aria-hidden="true"
             >
               ...
@@ -90,8 +90,8 @@ export function Pagination({
             className={`
               min-w-[40px] h-10 px-3 rounded-lg font-medium transition-colors duration-150
               ${isActive
-                ? 'bg-primary-500 text-white'
-                : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-border text-muted-foreground hover:bg-muted/50'
               }
             `}
             aria-current={isActive ? 'page' : undefined}
@@ -106,7 +106,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+        className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
         aria-label={t('common.next') || 'Next'}
       >
         <ChevronRight className="h-5 w-5" />

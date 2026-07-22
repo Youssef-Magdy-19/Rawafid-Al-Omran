@@ -34,7 +34,7 @@ export function TestimonialCard({
               key={i}
               className={cn(
                 'h-4 w-4',
-                i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                i < rating ? 'fill-secondary text-secondary' : 'text-muted-foreground/30'
               )}
             />
           ))}

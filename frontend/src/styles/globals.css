@@ -43,6 +43,8 @@
     
     /* Radius */
     --radius: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
     
     /* Brand Colors */
     --gold: 43 74% 49%;
@@ -50,6 +52,13 @@
     --gold-dark: 43 74% 39%;
     --charcoal: 220 14% 16%;
     --charcoal-light: 220 14% 96%;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
   }
 
   .dark {
@@ -95,6 +104,13 @@
     --gold-dark: 43 74% 49%;
     --charcoal: 220 14% 96%;
     --charcoal-light: 217 33% 17%;
+
+    /* Shadows - Dark */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.6);
   }
 }
 
@@ -108,11 +124,48 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
   }
+  ::selection {
+    background-color: hsl(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  .premium-card {
+    @apply bg-card rounded-2xl border border-border/50 shadow-sm hover:shadow-lg hover:border-border/80 transition-all duration-300;
+  }
+  .premium-glass {
+    @apply bg-background/70 backdrop-blur-xl border border-border/50 shadow-lg;
+  }
+  .premium-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-primary/80;
+  }
+  .premium-subtitle {
+    @apply inline-flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary;
+  }
+  .premium-subtitle::before,
+  .premium-subtitle::after {
+    content: '';
+    @apply h-px w-8 bg-primary/30;
+  }
+  .section-gradient {
+    @apply bg-gradient-to-b from-background via-muted/20 to-background;
+  }
+  .section-gradient-alt {
+    @apply bg-gradient-to-b from-muted/30 via-background to-muted/30;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -150,6 +203,12 @@ html[lang="ar"] body {
 
 html[lang="ar"] h1, html[lang="ar"] h2, html[lang="ar"] h3, html[lang="ar"] h4, html[lang="ar"] h5, html[lang="ar"] h6 {
   font-family: 'Amiri', serif;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 /* Fallback for browsers without CSS variables */

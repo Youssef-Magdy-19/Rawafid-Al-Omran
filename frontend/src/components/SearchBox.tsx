@@ -50,7 +50,7 @@ export function SearchBox({
     <form onSubmit={handleSubmit} className="w-full">
       <div className="relative">
         <Search
-          className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-gray-400 ${iconSizes[size]}`}
+          className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-muted-foreground ${iconSizes[size]}`}
           aria-hidden="true"
         />
         <input
@@ -61,9 +61,9 @@ export function SearchBox({
           autoFocus={autoFocus}
           className={`
             w-full ${sizeClasses[size]} ${isRTL ? 'pr-12 pl-4' : 'pl-12 pr-4'}
-            bg-white border border-gray-300 rounded-lg
-            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-            placeholder:text-gray-400 text-gray-900
+            bg-background border border-border rounded-lg
+            focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+            placeholder:text-muted-foreground text-foreground
             transition-colors duration-150
           `}
           aria-label={placeholder || t('common.search') || 'Search'}
@@ -72,7 +72,7 @@ export function SearchBox({
           <button
             type="button"
             onClick={handleClear}
-            className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-150`}
+            className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-150`}
             aria-label={t('common.clear') || 'Clear search'}
           >
             <X className={iconSizes[size]} />

@@ -15,7 +15,7 @@ export function Skeleton({
   height,
   animation = 'wave',
 }: SkeletonProps) {
-  const baseStyles = 'bg-gray-200';
+  const baseStyles = 'bg-muted';
   
   const animationStyles = {
     pulse: 'animate-pulse',
@@ -51,7 +51,7 @@ export function Skeleton({
 // Preset skeleton components for common use cases
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm">
+    <div className="bg-card rounded-xl p-6 shadow-sm">
       <Skeleton className="w-full h-48 mb-4" />
       <Skeleton className="w-3/4 h-6 mb-2" />
       <Skeleton className="w-full h-4 mb-2" />
@@ -66,7 +66,7 @@ export function SkeletonCard() {
 
 export function SkeletonBlogPost() {
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+    <div className="bg-card rounded-xl overflow-hidden shadow-sm">
       <Skeleton className="w-full h-64" />
       <div className="p-6">
         <div className="flex gap-2 mb-4">
@@ -85,7 +85,7 @@ export function SkeletonBlogPost() {
 
 export function SkeletonTable({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+    <div className="bg-card rounded-xl overflow-hidden shadow-sm">
       <div className="p-4 border-b">
         <div className="flex gap-4">
           <Skeleton className="w-1/4 h-6" />

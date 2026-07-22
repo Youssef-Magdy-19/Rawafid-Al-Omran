@@ -47,15 +47,15 @@ export function FAQAccordion({
         return (
           <div
             key={item.id}
-            className="border border-gray-200 rounded-lg overflow-hidden bg-white"
+            className="border border-border rounded-lg overflow-hidden bg-card"
           >
             <button
               onClick={() => toggleItem(item.id)}
-              className="w-full flex items-center justify-between gap-4 p-6 text-right hover:bg-gray-50 transition-colors duration-150"
+              className="w-full flex items-center justify-between gap-4 p-6 text-right hover:bg-muted/50 transition-colors duration-150"
               aria-expanded={isOpen}
               aria-controls={`faq-answer-${item.id}`}
             >
-              <span className="text-lg font-medium text-gray-900 text-right flex-1">
+              <span className="text-lg font-medium text-foreground text-right flex-1">
                 {item.question}
               </span>
               <motion.span
@@ -63,7 +63,7 @@ export function FAQAccordion({
                 transition={{ duration: 0.2 }}
                 className={`flex-shrink-0 ${isRTL ? 'rotate-180' : ''}`}
               >
-                <ChevronDown className="h-5 w-5 text-gray-500" />
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
               </motion.span>
             </button>
             <AnimatePresence>
@@ -76,7 +76,7 @@ export function FAQAccordion({
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-6 pt-0 text-gray-600 leading-relaxed">
+                  <div className="p-6 pt-0 text-muted-foreground leading-relaxed">
                     {item.answer}
                   </div>
                 </motion.div>

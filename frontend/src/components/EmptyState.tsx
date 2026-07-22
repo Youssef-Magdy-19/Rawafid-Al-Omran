@@ -30,20 +30,20 @@ export function EmptyState({
   customIcon,
 }: EmptyStateProps) {
   const IconComponent = customIcon ? null : variantIcons[variant];
-  const icon = customIcon || (IconComponent ? <IconComponent className="h-16 w-16 text-gray-300" /> : null);
+  const icon = customIcon || (IconComponent ? <IconComponent className="h-16 w-16 text-muted-foreground/40" /> : null);
 
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       {icon && (
-        <div className="mb-6 text-gray-300">
+        <div className="mb-6 text-muted-foreground/40">
           {icon}
         </div>
       )}
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+      <h3 className="text-xl font-semibold text-foreground mb-2">
         {title}
       </h3>
       {description && (
-        <p className="text-gray-500 max-w-md mb-6">
+        <p className="text-muted-foreground max-w-md mb-6">
           {description}
         </p>
       )}

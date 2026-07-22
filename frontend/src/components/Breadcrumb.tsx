@@ -24,9 +24,9 @@ export function Breadcrumb({
 
   const renderSeparator = () => {
     if (separator === 'chevron') {
-      return <ChevronRight className="h-4 w-4 text-gray-400" />;
+      return <ChevronRight className="h-4 w-4 text-muted-foreground" />;
     }
-    return <span className="text-gray-400">{separator}</span>;
+    return <span className="text-muted-foreground">{separator}</span>;
   };
 
   const displayItems = items.length > maxItems
@@ -44,7 +44,7 @@ export function Breadcrumb({
           <li>
             <Link
               to="/"
-              className="flex items-center text-gray-600 hover:text-primary-500 transition-colors duration-150"
+              className="flex items-center text-muted-foreground hover:text-primary transition-colors duration-150"
               aria-label={t('navigation.home')}
             >
               <Home className="h-4 w-4" />
@@ -58,13 +58,13 @@ export function Breadcrumb({
             {item.href && index !== displayItems.length - 1 ? (
               <Link
                 to={item.href}
-                className="text-gray-600 hover:text-primary-500 transition-colors duration-150"
+                className="text-muted-foreground hover:text-primary transition-colors duration-150"
               >
                 {item.label}
               </Link>
             ) : (
               <span
-                className={index === displayItems.length - 1 ? 'text-gray-900 font-medium' : 'text-gray-500'}
+                className={index === displayItems.length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}
                 aria-current={index === displayItems.length - 1 ? 'page' : undefined}
               >
                 {item.label}

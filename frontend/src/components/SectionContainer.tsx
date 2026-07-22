@@ -25,10 +25,10 @@ export function SectionContainer({
   };
 
   const backgroundClasses = {
-    default: 'bg-white',
-    light: 'bg-gray-50',
-    dark: 'bg-gray-900',
-    primary: 'bg-primary-500',
+    default: 'bg-background',
+    light: 'bg-muted/30',
+    dark: 'bg-muted',
+    primary: 'bg-primary',
     none: '',
   };
 

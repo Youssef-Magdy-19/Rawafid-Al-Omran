@@ -53,14 +53,14 @@ export function Image({
   return (
     <div
       className={cn(
-        'relative overflow-hidden bg-gray-100',
+        'relative overflow-hidden bg-muted',
         aspectRatioClasses[aspectRatio],
         className
       )}
     >
       {/* Loading skeleton */}
       {!isLoaded && !shouldShowFallback && (
-        <div className="absolute inset-0 animate-pulse bg-gray-200" />
+        <div className="absolute inset-0 animate-pulse bg-muted" />
       )}
       
       {/* Main image */}
@@ -83,9 +83,9 @@ export function Image({
       
       {/* Fallback display */}
       {shouldShowFallback && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+        <div className="absolute inset-0 flex items-center justify-center bg-muted">
           {fallbackIcon || (
-            <ImageIcon className="h-12 w-12 text-gray-300" />
+            <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
           )}
         </div>
       )}

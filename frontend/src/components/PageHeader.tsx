@@ -58,7 +58,7 @@ export function PageHeader({
           {description && (
             <p
               className={`text-lg text-muted-foreground ${
-                backgroundImage ? 'text-gray-100' : ''
+                backgroundImage ? 'text-white/80' : ''
               }`}
             >
               {description}

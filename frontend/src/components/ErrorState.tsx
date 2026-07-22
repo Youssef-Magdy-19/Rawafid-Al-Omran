@@ -19,14 +19,14 @@ export function ErrorState({
       <div className="mb-6 text-error-500">
         <AlertCircle className="h-16 w-16" />
       </div>
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+      <h3 className="text-xl font-semibold text-foreground mb-2">
         {title}
       </h3>
-      <p className="text-gray-500 max-w-md mb-6">
+      <p className="text-muted-foreground max-w-md mb-6">
         {description}
       </p>
       {error && (
-        <pre className="text-left text-sm bg-gray-100 p-4 rounded-lg mb-6 max-w-2xl overflow-auto text-gray-700">
+        <pre className="text-left text-sm bg-muted p-4 rounded-lg mb-6 max-w-2xl overflow-auto text-muted-foreground">
           {error.message}
         </pre>
       )}

@@ -45,7 +45,7 @@ export function CTABanner({
             <Button
               size="lg"
               variant="ghost"
-              className="bg-white text-foreground hover:bg-white/90"
+              className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
               rightIcon={<ArrowRight className="h-5 w-5" />}
               onClick={() => window.location.href = buttonLink}
             >

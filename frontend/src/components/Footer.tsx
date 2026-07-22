@@ -147,7 +147,7 @@ export function Footer() {
               © {currentYear} {t('company.name')}. {t('footer.rights')}
             </p>
             <p className="text-xs text-muted-foreground">
-              Crafted with precision in Riyadh
+              {t('footer.crafted')}
             </p>
           </div>
         </div>
