@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import config from '../../config/index.js';
-import { verifyCloudinaryConnection, testSafeUpload, testAuthenticatedUpload, testAuthenticatedUploadMinimal, testUploadNoFolder } from '../../services/fileUpload.service.js';
+import { verifyCloudinaryConnection, testSafeUpload, testAuthenticatedUpload, testAuthenticatedUploadMinimal, testUploadNoFolder, testRawUploadDiagnostic } from '../../services/fileUpload.service.js';
 
 /**
  * Health response
@@ -90,6 +90,17 @@ interface CloudinaryDiagnosticResponse {
     secureUrl?: string;
     error?: string;
     diagnostic?: Record<string, unknown>;
+  };
+  rawDiagnostic?: Record<string, unknown>;
+  environment?: {
+    nodeVersion: string;
+    cloudinarySdkVersion: string;
+    hasCloudinaryUrl: boolean;
+    signatureAlgorithm: string;
+    uploadPrefix: string;
+    envSource: string;
+    apiKeyFirstChars: string;
+    apiSecretLength: number;
   };
 }
 
@@ -200,6 +211,18 @@ export const cloudinaryDiagnostic = async (_req: Request, res: Response): Promis
     }
   };
 
+  // Environment diagnostics
+  response.environment = {
+    nodeVersion: process.version,
+    cloudinarySdkVersion: '1.41.3',
+    hasCloudinaryUrl: !!process.env.CLOUDINARY_URL,
+    signatureAlgorithm: 'sha1 (SDK default)',
+    uploadPrefix: process.env.CLOUDINARY_UPLOAD_PREFIX || '(not set, SDK default)',
+    envSource: typeof process.env.CLOUDINARY_CLOUD_NAME === 'string' ? 'process.env' : 'unknown',
+    apiKeyFirstChars: config.cloudinary.apiKey ? config.cloudinary.apiKey.slice(0, 3) + '...' : 'NOT SET',
+    apiSecretLength: config.cloudinary.apiSecret ? config.cloudinary.apiSecret.length : 0,
+  };
+
   // Test 1: Ping Cloudinary API
   const pingResult = await verifyCloudinaryConnection();
   response.ping = {
@@ -239,7 +262,11 @@ export const cloudinaryDiagnostic = async (_req: Request, res: Response): Promis
     diagnostic: safeUploadResult.diagnostic,
   };
 
-  // Test 5: Test upload to ROOT folder (no folder specified)
+  // Test 5: Raw HTTP diagnostic — bypasses SDK, captures real response body
+  const rawDiagnosticResult = await testRawUploadDiagnostic();
+  response.rawDiagnostic = rawDiagnosticResult;
+
+  // Test 6: Test upload to ROOT folder (no folder specified)
   const uploadNoFolderResult = await testUploadNoFolder();
   response.uploadNoFolder = {
     success: uploadNoFolderResult.success,
