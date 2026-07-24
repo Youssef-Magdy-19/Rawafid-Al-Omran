@@ -191,9 +191,7 @@ export const uploadApi = {
   uploadFile: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return apiClient.post<ApiResponse<{ url: string; publicId: string }>>('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return apiClient.post<ApiResponse<{ url: string; publicId: string }>>('/upload', formData);
   },
 };
 

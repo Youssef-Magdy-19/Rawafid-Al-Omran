@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middlewares/auth.middleware.js';
-import { uploadSingleFile, uploadBufferToCloudinary } from '../middlewares/upload.middleware.js';
+import { uploadSingleFile } from '../middlewares/upload.middleware.js';
+import { uploadBufferSafe } from '../services/fileUpload.service.js';
 import logger from '../logger/logger.js';
 
 const router = Router();
@@ -33,8 +34,8 @@ router.post(
         fieldname: req.file.fieldname
       });
 
-      // Use buffer for Vercel serverless compatibility
-      const result = await uploadBufferToCloudinary(req.file.buffer, 'rawafid-omran');
+      // Use safe base64 upload for Vercel serverless compatibility
+      const result = await uploadBufferSafe(req.file.buffer, 'rawafid-omran');
 
       logger.info('Upload successful', { publicId: result.public_id });
 

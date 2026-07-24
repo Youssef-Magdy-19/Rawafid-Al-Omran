@@ -131,14 +131,24 @@
 }
 
 @layer components {
+  /* ===== PREMIUM CARDS ===== */
   .premium-card {
     @apply bg-card rounded-2xl border border-border/50 shadow-sm hover:shadow-lg hover:border-border/80 transition-all duration-300;
+  }
+  .premium-card-elevated {
+    @apply bg-card rounded-2xl border border-border/40 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-500;
   }
   .premium-glass {
     @apply bg-background/70 backdrop-blur-xl border border-border/50 shadow-lg;
   }
+  .premium-glass-strong {
+    @apply bg-background/80 backdrop-blur-2xl border border-border/40 shadow-xl;
+  }
   .premium-gradient-text {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-primary/80;
+  }
+  .premium-gradient-text-gold {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-secondary via-secondary to-secondary/80;
   }
   .premium-subtitle {
     @apply inline-flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary;
@@ -148,11 +158,75 @@
     content: '';
     @apply h-px w-8 bg-primary/30;
   }
+
+  /* ===== SECTION BACKGROUNDS ===== */
   .section-gradient {
     @apply bg-gradient-to-b from-background via-muted/20 to-background;
   }
   .section-gradient-alt {
     @apply bg-gradient-to-b from-muted/30 via-background to-muted/30;
+  }
+  .section-hero {
+    @apply relative min-h-[80vh] flex items-center overflow-hidden;
+  }
+  .section-primary {
+    @apply relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-primary-dark;
+  }
+  .section-primary-gold {
+    @apply relative overflow-hidden;
+    background: linear-gradient(135deg, hsl(var(--primary)/0.97), hsl(var(--primary)/0.92)),
+                radial-gradient(ellipse at 20% 50%, hsl(var(--secondary)/0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, hsl(var(--secondary)/0.1) 0%, transparent 50%);
+  }
+
+  /* ===== MESH GRADIENTS ===== */
+  .mesh-bg {
+    background: 
+      radial-gradient(ellipse at 0% 0%, hsl(var(--primary)/0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 100% 100%, hsl(var(--secondary)/0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, hsl(var(--primary)/0.03) 0%, transparent 70%);
+  }
+  .mesh-bg-intense {
+    background: 
+      radial-gradient(ellipse at 20% 0%, hsl(var(--primary)/0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, hsl(var(--secondary)/0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, hsl(var(--primary)/0.05) 0%, transparent 70%);
+  }
+  .mesh-grid {
+    background-image: 
+      linear-gradient(to right, hsl(var(--foreground)/0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground)/0.04) 1px, transparent 1px);
+    background-size: 4rem 4rem;
+  }
+  .mesh-grid-light {
+    background-image: 
+      linear-gradient(to right, hsl(var(--foreground)/0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground)/0.02) 1px, transparent 1px);
+    background-size: 3rem 3rem;
+  }
+
+  /* ===== DECORATIVE ELEMENTS ===== */
+  .deco-circle {
+    @apply absolute rounded-full pointer-events-none;
+    background: radial-gradient(circle, hsl(var(--primary)/0.1) 0%, transparent 70%);
+  }
+  .deco-circle-gold {
+    @apply absolute rounded-full pointer-events-none;
+    background: radial-gradient(circle, hsl(var(--secondary)/0.1) 0%, transparent 70%);
+  }
+  .deco-line {
+    @apply absolute h-px pointer-events-none;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary)/0.3), transparent);
+  }
+
+  /* ===== IMAGE TREATMENTS ===== */
+  .img-overlay-primary {
+    @apply absolute inset-0;
+    background: linear-gradient(135deg, hsl(var(--primary)/0.4), hsl(var(--primary)/0.1));
+  }
+  .img-overlay-dark {
+    @apply absolute inset-0;
+    background: linear-gradient(to top, hsl(0 0% 0%/0.7), hsl(0 0% 0%/0.2), hsl(0 0% 0%/0.1));
   }
 }
 

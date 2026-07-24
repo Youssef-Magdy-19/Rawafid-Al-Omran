@@ -1,23 +1,7 @@
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinary from '../config/cloudinary.js';
 import fs from 'fs';
 import config from '../config/index.js';
 import logger from '../logger/logger.js';
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: config.cloudinary.cloudName,
-  api_key: config.cloudinary.apiKey,
-  api_secret: config.cloudinary.apiSecret
-});
-
-// Log Cloudinary configuration status (without exposing secrets)
-logger.info('Cloudinary configuration', {
-  hasCloudName: !!config.cloudinary.cloudName,
-  hasApiKey: !!config.cloudinary.apiKey,
-  hasApiSecret: !!config.cloudinary.apiSecret,
-  cloudNameLength: config.cloudinary.cloudName?.length || 0,
-  apiKeyLength: config.cloudinary.apiKey?.length || 0
-});
 
 export interface CloudinaryUploadResult {
   public_id: string;
@@ -42,6 +26,81 @@ export interface ImageOptimizationOptions {
 const defaultOptimization: ImageOptimizationOptions = {
   quality: 'auto:good',
   crop: 'fill'
+};
+
+/**
+ * Upload a buffer to Cloudinary using base64 data URI.
+ * More reliable than upload_stream in serverless environments.
+ */
+export const uploadBufferSafe = async (
+  buffer: Buffer,
+  folder: string = 'rawafid-omran',
+  options: ImageOptimizationOptions = {}
+): Promise<CloudinaryUploadResult> => {
+  const mergedOptions = { ...defaultOptimization, ...options };
+
+  if (
+    !config.cloudinary.cloudName ||
+    !config.cloudinary.apiKey ||
+    !config.cloudinary.apiSecret
+  ) {
+    const error = new Error('Cloudinary is not properly configured');
+    (error as any).code = 'CLOUDINARY_CONFIG_MISSING';
+    throw error;
+  }
+
+  logger.info('Starting safe buffer upload (base64) to Cloudinary', {
+    bufferSize: buffer.length,
+    folder,
+    cloudName: config.cloudinary.cloudName,
+  });
+
+  const dataUri = `data:image/png;base64,${buffer.toString('base64')}`;
+
+  const transformations: Record<string, unknown>[] = [
+    { quality: mergedOptions.quality },
+    { fetch_format: 'auto' },
+  ];
+  if (mergedOptions.width) transformations.push({ width: mergedOptions.width });
+  if (mergedOptions.height) transformations.push({ height: mergedOptions.height });
+  if (mergedOptions.crop) transformations.push({ crop: mergedOptions.crop });
+
+  try {
+    const result = await cloudinary.uploader.upload(dataUri, {
+      folder,
+      resource_type: 'image',
+      transformation: transformations,
+    });
+
+    logger.info('Safe buffer upload successful', {
+      publicId: result.public_id,
+      secureUrl: result.secure_url,
+    });
+
+    return {
+      public_id: result.public_id,
+      secure_url: result.secure_url,
+      format: result.format,
+      width: result.width,
+      height: result.height,
+      bytes: result.bytes,
+      created_at: result.created_at,
+    };
+  } catch (error: any) {
+    logger.error('Safe buffer upload failed', {
+      errorMessage: error?.message,
+      errorName: error?.name,
+      httpCode: error?.http_code,
+    });
+
+    const uploadError = new Error(error?.message || 'Cloudinary upload failed');
+    Object.defineProperties(uploadError, {
+      statusCode: { value: error?.http_code, enumerable: true },
+      cloudinaryError: { value: error?.name, enumerable: true },
+    });
+
+    throw uploadError;
+  }
 };
 
 /**
@@ -530,7 +589,68 @@ export const verifyCloudinaryConnection = async (): Promise<{
 };
 
 /**
- * Test authenticated upload WITH transformations (current production behavior)
+ * Test safe upload (base64 data URI approach) — THE primary diagnostic
+ */
+export const testSafeUpload = async (): Promise<{
+  success: boolean;
+  result?: CloudinaryUploadResult;
+  error?: string;
+  diagnostic?: Record<string, unknown>;
+}> => {
+  if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
+    return {
+      success: false,
+      error: 'Cloudinary not configured',
+      diagnostic: {
+        hasCloudName: !!config.cloudinary.cloudName,
+        hasApiKey: !!config.cloudinary.apiKey,
+        hasApiSecret: !!config.cloudinary.apiSecret,
+      },
+    };
+  }
+
+  try {
+    const minimalPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64'
+    );
+
+    logger.info('Testing safe (base64) upload', {
+      bufferSize: minimalPng.length,
+      cloudName: config.cloudinary.cloudName,
+    });
+
+    const result = await uploadBufferSafe(minimalPng, 'rawafid-omran/test-safe');
+
+    logger.info('Safe upload test successful', {
+      publicId: result.public_id,
+      secureUrl: result.secure_url,
+    });
+
+    await deleteImage(result.public_id);
+
+    return { success: true, result };
+  } catch (error: any) {
+    logger.error('Safe upload test failed', {
+      errorMessage: error?.message,
+      errorName: error?.name,
+      statusCode: error?.statusCode,
+    });
+
+    return {
+      success: false,
+      error: error?.message || 'Safe upload test failed',
+      diagnostic: {
+        name: error?.name,
+        message: error?.message,
+        statusCode: error?.statusCode,
+      },
+    };
+  }
+};
+
+/**
+ * Test authenticated upload WITH transformations (upload_stream approach)
  */
 export const testAuthenticatedUpload = async (): Promise<{
   success: boolean;
@@ -556,7 +676,7 @@ export const testAuthenticatedUpload = async (): Promise<{
       'base64'
     );
 
-    logger.info('Testing authenticated upload WITH transformations', {
+    logger.info('Testing authenticated upload WITH transformations (upload_stream)', {
       bufferSize: minimalPng.length,
       cloudName: config.cloudinary.cloudName
     });
@@ -595,7 +715,7 @@ export const testAuthenticatedUpload = async (): Promise<{
 };
 
 /**
- * Test authenticated upload WITHOUT transformations (diagnostic)
+ * Test authenticated upload WITHOUT transformations (diagnostic, upload_stream)
  */
 export const testAuthenticatedUploadMinimal = async (): Promise<{
   success: boolean;
@@ -621,7 +741,7 @@ export const testAuthenticatedUploadMinimal = async (): Promise<{
       'base64'
     );
 
-    logger.info('Testing authenticated upload WITHOUT transformations (diagnostic)', {
+    logger.info('Testing authenticated upload WITHOUT transformations (upload_stream)', {
       bufferSize: minimalPng.length,
       cloudName: config.cloudinary.cloudName
     });
@@ -660,7 +780,7 @@ export const testAuthenticatedUploadMinimal = async (): Promise<{
 };
 
 /**
- * Test upload to ROOT folder (no folder specified)
+ * Test upload to ROOT folder (no folder specified, upload_stream)
  */
 export const testUploadNoFolder = async (): Promise<{
   success: boolean;
@@ -681,7 +801,7 @@ export const testUploadNoFolder = async (): Promise<{
       'base64'
     );
 
-    logger.info('Testing upload to ROOT folder (no folder)', {
+    logger.info('Testing upload to ROOT folder (no folder, upload_stream)', {
       bufferSize: minimalPng.length,
       cloudName: config.cloudinary.cloudName
     });
@@ -721,6 +841,7 @@ export const testUploadNoFolder = async (): Promise<{
 export default {
   uploadSingleImage,
   uploadBuffer,
+  uploadBufferSafe,
   uploadBufferMinimal,
   uploadBufferNoFolder,
   uploadGallery,
@@ -731,6 +852,7 @@ export default {
   getOptimizedImageUrl,
   getThumbnailUrl,
   verifyCloudinaryConnection,
+  testSafeUpload,
   testAuthenticatedUpload,
   testAuthenticatedUploadMinimal,
   testUploadNoFolder

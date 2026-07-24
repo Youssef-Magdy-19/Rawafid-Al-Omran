@@ -70,13 +70,11 @@ export function ServicesPage() {
       </Helmet>
 
       {/* Hero */}
-      <section className="relative min-h-[70vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/80 to-primary/60" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_hsl(var(--secondary)/0.15)_0%,_transparent_50%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_hsl(var(--secondary)/0.1)_0%,_transparent_50%)]" />
-        </div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+      <section className="section-hero">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/98 via-primary/90 to-primary-dark" />
+        <div className="absolute inset-0 mesh-grid opacity-20" />
+        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-secondary/15 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 h-80 w-80 rounded-full bg-secondary/10 blur-3xl" />
         <div className="container relative mx-auto px-4 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -84,11 +82,15 @@ export function ServicesPage() {
             transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
             className="mx-auto max-w-4xl text-center"
           >
-            <span className="premium-subtitle mb-6 justify-center">{t('services.subtitle')}</span>
-            <h1 className="mb-6 text-5xl font-bold tracking-tight text-foreground lg:text-6xl lg:leading-tight">
+            <span className="inline-flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-secondary mb-6 justify-center">
+              <span className="h-px w-8 bg-secondary/50" />
+              {t('services.subtitle')}
+              <span className="h-px w-8 bg-secondary/50" />
+            </span>
+            <h1 className="mb-6 text-5xl font-bold tracking-tight text-white lg:text-6xl lg:leading-tight">
               {t('services.hero.title')}
             </h1>
-            <p className="mx-auto max-w-2xl text-lg text-muted-foreground leading-relaxed">
+            <p className="mx-auto max-w-2xl text-lg text-white/70 leading-relaxed">
               {t('services.hero.description')}
             </p>
           </motion.div>

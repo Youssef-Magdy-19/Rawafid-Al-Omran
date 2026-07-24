@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import config from '../../config/index.js';
-import { verifyCloudinaryConnection, testAuthenticatedUpload, testAuthenticatedUploadMinimal, testUploadNoFolder } from '../../services/fileUpload.service.js';
+import { verifyCloudinaryConnection, testSafeUpload, testAuthenticatedUpload, testAuthenticatedUploadMinimal, testUploadNoFolder } from '../../services/fileUpload.service.js';
 
 /**
  * Health response
@@ -78,6 +78,13 @@ interface CloudinaryDiagnosticResponse {
     diagnostic?: Record<string, unknown>;
   };
   uploadNoFolder?: {
+    success: boolean;
+    publicId?: string;
+    secureUrl?: string;
+    error?: string;
+    diagnostic?: Record<string, unknown>;
+  };
+  uploadSafe?: {
     success: boolean;
     publicId?: string;
     secureUrl?: string;
@@ -222,7 +229,17 @@ export const cloudinaryDiagnostic = async (_req: Request, res: Response): Promis
     diagnostic: uploadMinimalResult.diagnostic
   };
 
-  // Test 4: Test upload to ROOT folder (no folder specified)
+  // Test 4: Test safe upload (base64 data URI approach — most reliable for serverless)
+  const safeUploadResult = await testSafeUpload();
+  response.uploadSafe = {
+    success: safeUploadResult.success,
+    publicId: safeUploadResult.result?.public_id,
+    secureUrl: safeUploadResult.result?.secure_url,
+    error: safeUploadResult.error,
+    diagnostic: safeUploadResult.diagnostic,
+  };
+
+  // Test 5: Test upload to ROOT folder (no folder specified)
   const uploadNoFolderResult = await testUploadNoFolder();
   response.uploadNoFolder = {
     success: uploadNoFolderResult.success,
@@ -233,8 +250,8 @@ export const cloudinaryDiagnostic = async (_req: Request, res: Response): Promis
   };
 
   // Overall status: all tests must pass
-  response.status = (pingResult.success && uploadWithTransformsResult.success && uploadMinimalResult.success && uploadNoFolderResult.success) 
-    ? 'success' 
+  response.status = (pingResult.success && safeUploadResult.success)
+    ? 'success'
     : 'failed';
 
   res.status(response.status === 'success' ? 200 : 503).json(response);

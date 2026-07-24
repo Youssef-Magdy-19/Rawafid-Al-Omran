@@ -14,7 +14,7 @@ import { CareersPage } from '@pages/Careers/CareersPage';
 import { CareerDetailsPage } from '@pages/Careers/CareerDetailsPage';
 import { FAQPage } from '@pages/FAQ/FAQPage';
 import { ServiceDetailsPage } from '@pages/Services/ServiceDetailsPage';
-import { ProjectDetailsPage } from '@pages/Projects/ProjectDetailsPage';
+import { ProjectDetailPage } from '@pages/Projects/ProjectDetailsPage';
 import { PartnersPage } from '@pages/Partners/PartnersPage';
 import { TestimonialsPage } from '@pages/Testimonials/TestimonialsPage';
 import { QuoteRequestPage } from '@pages/Quote/QuoteRequestPage';
@@ -96,7 +96,7 @@ export function AppRoutes() {
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/:slug" element={<ServiceDetailsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
-          <Route path="projects/:slug" element={<ProjectDetailsPage />} />
+          <Route path="projects/:slug" element={<ProjectDetailPage />} />
           <Route path="team" element={<TeamPage />} />
           <Route path="contact" element={<ContactPage />} />
           <Route path="blog" element={<BlogPage />} />
@@ -108,7 +108,7 @@ export function AppRoutes() {
           <Route path="faq" element={<FAQPage />} />
           <Route path="quote" element={<QuoteRequestPage />} />
           <Route path="search" element={<SearchPage />} />
-          <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="privacy" element={<PrivacyPolicyPage />} />
           <Route path="terms-of-service" element={<TermsOfServicePage />} />
           <Route path="cookie-policy" element={<CookiePolicyPage />} />
           <Route path="*" element={<NotFoundPage />} />

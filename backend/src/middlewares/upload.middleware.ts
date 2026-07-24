@@ -1,6 +1,6 @@
 import multer from 'multer';
 import { Request } from 'express';
-import { uploadBuffer, deleteImage } from '../services/fileUpload.service.js';
+import { uploadBufferSafe, deleteImage } from '../services/fileUpload.service.js';
 import config from '../config/index.js';
 
 // Use memory storage for Vercel serverless compatibility
@@ -36,12 +36,12 @@ export const upload = multer({
   }
 });
 
-// Helper function to upload buffer to Cloudinary
+// Helper function to upload buffer to Cloudinary (uses safe base64 approach)
 export const uploadBufferToCloudinary = async (
   buffer: Buffer,
   folder: string = 'rawafid-omran'
 ) => {
-  return uploadBuffer(buffer, folder);
+  return uploadBufferSafe(buffer, folder);
 };
 
 // Helper function to delete file from Cloudinary
